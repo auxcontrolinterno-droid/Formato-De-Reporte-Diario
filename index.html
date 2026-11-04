@@ -38,7 +38,7 @@ details{border-top:1px solid var(--bd);padding:8px 0}summary{cursor:pointer}
 .hide{display:none}
 </style></head><body>
 <header><h1>AIS · Reporte diario de novedades</h1>
-<nav><button data-v="r1" class="on">Reporte 1</button><button data-v="r2">Reporte 2</button><button data-v="dash">Dashboard</button></nav></header>
+<nav><button data-v="r1" class="on">REPORTE 1</button><button data-v="r2">REPORTE 2</button><button data-v="dash">Dashboard</button></nav></header>
 <main>
 <div id="form"></div>
 <div id="dash" class="hide"></div>
@@ -82,8 +82,8 @@ function renderForm(){
   h+="</tbody></table></div>"});
  h+=`<div class="card" style="margin-top:14px"><label>Observaciones generales (opcional)</label><textarea id="ob" rows="3">${esc(s.obs)}</textarea></div>
  <div class="card"><div class="g">
- <div><label>Guarda de turno – Nombre</label><input id="gn" value="${esc(s.guard)}"><label style="margin-top:8px">Firma</label><canvas id="gc"></canvas><button class="btn" data-clr="gc">Borrar firma</button></div>
- <div><label>Supervisor de turno – Nombre</label><input id="sn" value="${esc(s.sup)}"><label style="margin-top:8px">Firma</label><canvas id="sc"></canvas><button class="btn" data-clr="sc">Borrar firma</button></div></div>
+ <div><label>Guarda de turno – Nombres y Apellidos</label><input id="gn" value="${esc(s.guard)}"><label style="margin-top:8px">Firma</label><canvas id="gc"></canvas><button class="btn" data-clr="gc">Borrar firma</button></div>
+ <div><label>Supervisor de turno – Nombres y Apellidos</label><input id="sn" value="${esc(s.sup)}"><label style="margin-top:8px">Firma</label><canvas id="sc"></canvas><button class="btn" data-clr="sc">Borrar firma</button></div></div>
  <div id="fm"></div><div class="row" style="margin-top:12px"><button class="btn pr" id="send">Finalizar y enviar reporte</button><span class="mu" id="cnt"></span></div></div>`;
  $("#form").innerHTML=h;
  pad(0);cnt();
