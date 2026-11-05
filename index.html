@@ -41,19 +41,19 @@ td.p img{display:inline-block;vertical-align:middle;width:40px;height:34px;objec
 #pv{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:12px}
 #pv img{max-width:100%;max-height:70vh;border-radius:8px}
 </style></head><body>
-<header><h1>AIS · Reporte diario de novedades</h1>
-<nav><button data-v="r1" class="on">Reporte 1</button><button data-v="r2">Reporte 2</button><button data-v="dash">Dashboard</button></nav></header>
+<header><h1>AIS · REPORTE DIARIO DE NOVEDADES</h1>
+<nav><button data-v="r1" class="on">REPORTE 1</button><button data-v="r2">REPORTE 2</button><button data-v="dash">DASHBOARD</button></nav></header>
 <main>
 <div id="form"></div>
 <div id="dash" class="hide"></div>
 </main>
 <input type="file" accept="image/*" capture="environment" id="pf" class="hide">
 <script>
-const COLS=["Puerta abierta","Puerta cerrada","Cerradura B/E","Cerradura M/E","Aire ON","Aire OFF","Luces ON","Luces OFF"];
+const COLS=["PUERTA ABIERTA","PUERTA CERRADA","CERRADURA B/E","CERRADURA M/E","AIRE ON","AIRE OFF","LUCES ON","LUCES OFF"];
 const HD=[["Puertas",["Abierta","Cerrada"]],["Cerradura",["B/E","M/E"]],["Aire acond.",["ON","OFF"]],["Luces",["ON","OFF"]]];
 const S=(k,t,r)=>({k,t,r:r.split("|")});
 const R={
-r1:{n:"Reporte 1 · Centro de Innovación, Edificio Administrativo y Cafetorium",secs:[
+r1:{n:"Reporte 1 · CENTRO DE INNOVACIÓN, EDIFICIO ADMINISTRATIVO y CAFETORIUM",secs:[
 S("ci1","Centro de Innovación – Primer piso (1)","Knowledge Lab|Código-Robótica|Laboratorio de audiovisuales|Ofic Johanna Pallares|Fotocopias|Ofic Stefanny Viscaino|Sustentabilidad|Baños niñas|Baños niños|Oficina programador|Cuarto aires acondicionados|Shark café|Biblioteca|Bodega No.1 camerinos|Baño hombres camerino|Baño mujeres camerino|Bodega No.2 camerinos|Oficina Jeferson Olmos|Oficina tecnología Manuel Arnache|Oficina tecnología Kevin"),
 S("ci2","Centro de Innovación – Segundo piso (2)","Laboratorio química|Laboratorio biología|Laboratorio física|Bodega Laboratorios insumos químicos|Office tecnología|Makerspace|Cuarto de aseo|Office Director I.C.|Baños niños|Baños niñas|Fab lab"),
 S("ci3","Centro de Innovación – Tercer piso (3)","Salón Bellas artes|Puerta de balcón|Puerta azotea|Bodega de Arte|Cuarto de Aires|Ofic. Dpto Música|Bodega música|Baños niñas|Baños niños|Drama|Estudio música 1|Estudio música 2|Estudio música 3|Salón de música / Music hall"),
@@ -61,10 +61,10 @@ S("ad1","Edificio Administrativo – Primer piso (1)","Baño externo|Bodega Sr H
 S("ad2","Edificio Administrativo – Segundo piso","Baño externo|Oficina Jackeline V|Oficina ms Priscila|Admisiones|Secretaría académica|SST- Maryuris|Movilizate José C.|Control academy|Rack Principal|Comunicaciones|Baño interno comunitario|Comunicaciones (2)"),
 S("ad3","Edificio Administrativo – Tercer piso","Baño externo|Cartera|Tesorería|Contabilidad|Gestión Humana|Bodega ms Priscila|Oficina MR Henry|Cuarto de aseo|Oficina Henry Anto"),
 S("caf","Cafetorium","Cuarto staff No.1|Cuarto staff No.2|Puesto de sonido (1)|Baños niñas|Baños niños|Bodega pequeña|Cocina|Bodega de cocina|Oficina de alimentación|Ingreso personal de cocina|Puesto de sonido (2)")]},
-r2:{n:"Reporte 2 · Edificio Académico (3 pisos)",secs:[
-S("ac1","Edificio Académico – Primer piso (1)","Nursery Wasser|Nursery Dufy|Baños niños|Baños niñas|PreKinder-C|Vicerrectoría PP|PreKinder-B|Enfermería|PreKinder-A|2-A|Janintor-Feliz|Petit Cafetorium|Baños niños|Baños niñas|Dpto Spanish|2-C|2-B|Vicerrectoría Elem|Sala profesores Elem|3-C|Psicología|Ricardo Copias|3-A|3-B|Baños niños|Baños niñas|Subest/Eléctrica|4-B|4-C"),
-S("ac2","Edificio Académico – Segundo piso (2)","4-A|Psicología Alejandra|5-A|Baños niñas|Baños niños|5-B|6-B|6-A|Psicología Silvia|Salón vacío|Convivencia|7-A|7-B|Psicología Nelly|Atelier|Baños niños|Baños niñas|1-C|1-B|Gim win center|1-A|Sala profesores PP|Kinder-A|Kinder-C|Baño niñas|Baño niños|Kinder-B"),
-S("ac3","Edificio Académico – Tercer piso (3)","Octavo-A|Octavo-B|Vicerrectoría Bachillerato|Once-A|Once-B|The Fin zone|Psicología Hugo S|Sala profesores Bachi|Noveno-A|Noveno-B|Baños niños|Baños niñas|Décimo-A|Oficina control interno|Décimo-B|Doce A|Doce B|Sala profesores N|Baños niñas|Baños niños")]}
+r2:{n:"Reporte 2 · ZONA ACADÉMICA (3 pisos)",secs:[
+S("ac1","ZONA ACADÉMICA – Primer piso (1)","Nursery Wasser|Nursery Dufy|Baños niños|Baños niñas|PreKinder-C|Vicerrectoría PP|PreKinder-B|Enfermería|PreKinder-A|2-A|Janintor-Feliz|Petit Cafetorium|Baños niños|Baños niñas|Dpto Spanish|2-C|2-B|Vicerrectoría Elem|Sala profesores Elem|3-C|Psicología|Ricardo Copias|3-A|3-B|Baños niños|Baños niñas|Subest/Eléctrica|4-B|4-C"),
+S("ac2","ZONA ACADÉMICA – Segundo piso (2)","4-A|Psicología Alejandra|5-A|Baños niñas|Baños niños|5-B|6-B|6-A|Psicología Silvia|Salón vacío|Convivencia|7-A|7-B|Psicología Nelly|Atelier|Baños niños|Baños niñas|1-C|1-B|Gim win center|1-A|Sala profesores PP|Kinder-A|Kinder-C|Baño niñas|Baño niños|Kinder-B"),
+S("ac3","ZONA ACADÉMICA– Tercer piso (3)","Octavo-A|Octavo-B|Vicerrectoría Bachillerato|Once-A|Once-B|The Fin zone|Psicología Hugo S|Sala profesores Bachi|Noveno-A|Noveno-B|Baños niños|Baños niñas|Décimo-A|Oficina control interno|Décimo-B|Doce A|Doce B|Sala profesores N|Baños niñas|Baños niños")]}
 };
 const $=s=>document.querySelector(s),esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 let cur="r1",st={r1:null,r2:null},UID=null,AUTH=false,all=[];
@@ -87,8 +87,8 @@ function renderForm(){
   h+="</tbody></table></div>"});
  h+=`<div class="card" style="margin-top:14px"><label>Observaciones generales (opcional)</label><textarea id="ob" rows="3">${esc(s.obs)}</textarea></div>
  <div class="card"><div class="g">
- <div><label>Guarda de turno – Nombre</label><input id="gn" value="${esc(s.guard)}"><label style="margin-top:8px">Firma</label><canvas id="gc"></canvas><button class="btn" data-clr="gc">Borrar firma</button></div>
- <div><label>Supervisor de turno – Nombre</label><input id="sn" value="${esc(s.sup)}"><label style="margin-top:8px">Firma</label><canvas id="sc"></canvas><button class="btn" data-clr="sc">Borrar firma</button></div></div>
+ <div><label>Guarda de turno – NOMBRES Y APELLIDOS</label><input id="gn" value="${esc(s.guard)}"><label style="margin-top:8px">Firma</label><canvas id="gc"></canvas><button class="btn" data-clr="gc">Borrar firma</button></div>
+ <div><label>Supervisor de turno – NOMBRES Y APELLIDOS</label><input id="sn" value="${esc(s.sup)}"><label style="margin-top:8px">Firma</label><canvas id="sc"></canvas><button class="btn" data-clr="sc">Borrar firma</button></div></div>
  <div id="fm"></div><div class="row" style="margin-top:12px"><button class="btn pr" id="send">Finalizar y enviar reporte</button><span class="mu" id="cnt"></span></div></div>`;
  $("#form").innerHTML=h;
  pad(0);cnt();
@@ -332,9 +332,9 @@ async function makePdf(kind){
   const tblBase={margin:{top:16,left:M,right:M,bottom:14},theme:"grid",styles:{font:"helvetica",fontSize:8,cellPadding:1.6,textColor:TX,lineColor:BD,lineWidth:.1,valign:"middle"},headStyles:{fillColor:PR,textColor:[255,255,255],fontStyle:"bold",halign:"center"},alternateRowStyles:{fillColor:[245,247,252]}};
   /* --- encabezado --- */
   txt("AIS",M,22,30,true,PR);
-  fc(PR);doc.roundedRect(M,25,34,5,2.5,2.5,"F");txt("CONTROL DE NOVEDADES",M+17,28.5,5.5,true,[255,255,255],"center");
+  fc(PR);doc.roundedRect(M,25,34,5,2.5,2.5,"F");txt("DEPARTAMENTO DE SEGURIDAD E INFRAESTRUCTURA",M+17,28.5,5.5,true,[255,255,255],"center");
   txt(tipo,M+46,19,14,true,PR);
-  txt("Consolidado de los reportes diarios de novedades",M+46,25,8,false,GR);
+  txt("REPORTE DE NOVEDADES DE INFRAESTRUCTURA",M+46,25,8,false,GR);
   const bx=W-M-70;fc(LB);dc(BD);doc.setLineWidth(.3);doc.roundedRect(bx,9,70,25,3,3,"FD");
   txt("PERIODO",bx+4,15,7,true,GR);txt(per,bx+4,21.5,11,true,PR);
   doc.setLineWidth(.2);doc.line(bx+4,24,bx+66,24);
@@ -345,7 +345,7 @@ async function makePdf(kind){
   pill("Resumen del período",M,48,CW);
   const PAL=[[29,63,143],[246,213,74],[72,160,220],[60,160,110],[230,126,34],[192,57,43],[142,68,173],[120,130,150]];
   const cx=M+32,cy=90,R=30,r=19;
-  const DONA=["Puerta abierta","Cerradura M/E","Aire ON","Luces ON"],dTot=DONA.reduce((s,c)=>s+(cnt[c]||0),0);
+  const DONA=["PUERTA ABIERTA","CERRADURA M/E","AIRE ON","LUCES ON"],dTot=DONA.reduce((s,c)=>s+(cnt[c]||0),0);
   if(dTot>0){let a0=-90;DONA.forEach((c,i)=>{if(!cnt[c])return;const a1=a0+cnt[c]/dTot*360;fc(PAL[i]);doc.setDrawColor(255,255,255);doc.setLineWidth(.5);poly(arc(cx,cy,R,a0,a1).concat(arc(cx,cy,r,a1,a0)),"FD");a0=a1})}
   else{fc([225,228,235]);doc.circle(cx,cy,R,"F")}
   fc([150,153,160]);doc.circle(cx,cy,r-.3,"F");
