@@ -36,8 +36,8 @@ canvas{width:100%;height:120px;border:1px dashed var(--mu);border-radius:8px;bac
 details{border-top:1px solid var(--bd);padding:8px 0}summary{cursor:pointer}
 .sig{max-width:260px;background:#fff;border:1px solid var(--bd);border-radius:6px}
 .hide{display:none}
-td.p{width:52px;min-width:52px;cursor:pointer;font-size:18px;user-select:none}
-td.p img{display:block;width:44px;height:34px;object-fit:cover;margin:2px auto;border-radius:4px}
+td.p{width:96px;min-width:96px;cursor:pointer;font-size:18px;user-select:none;white-space:nowrap}
+td.p img{display:inline-block;vertical-align:middle;width:40px;height:34px;object-fit:cover;margin:2px;border-radius:4px}
 #pv{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:12px}
 #pv img{max-width:100%;max-height:70vh;border-radius:8px}
 </style></head><body>
@@ -81,7 +81,7 @@ function renderForm(){
  <p class="mu">Toque una casilla para marcar <b>SÍ</b> (novedad). Las casillas con raya “—” = sin novedad.</p></div>`;
  def.secs.forEach(sec=>{
   h+=`<div class="sec">${esc(sec.t)}</div><div class="wrap"><table><thead><tr><th rowspan="2">No. / Aula</th><th rowspan="2">Foto</th>${HD.map(x=>`<th colspan="2">${x[0]}</th>`).join("")}</tr><tr>${HD.map(x=>x[1].map(y=>`<th>${y}</th>`).join("")).join("")}</tr></thead><tbody>`;
-  sec.r.forEach((nm,i)=>{h+=`<tr><td class="n"><small>${String(i+1).padStart(2,"0")}</small> ${esc(nm)}</td>`;{const pk=sec.k+"|"+i,pi=s.photos[pk];h+=`<td class="p" data-p="${pk}">${pi?`<img src="${pi}">`:"📷"}</td>`}
+  sec.r.forEach((nm,i)=>{h+=`<tr><td class="n"><small>${String(i+1).padStart(2,"0")}</small> ${esc(nm)}</td>`;{const pk=sec.k+"|"+i;h+=`<td class="p" data-p="${pk}">${cellHtml(s.photos[pk])}</td>`}
    for(let c=0;c<8;c++){const x=s.marks.has(sec.k+"|"+i+"|"+c);h+=`<td class="c${x?" x":""}" data-k="${sec.k}|${i}|${c}">${x?"SÍ":"—"}</td>`}
    h+="</tr>"});
   h+="</tbody></table></div>"});
@@ -94,7 +94,7 @@ function renderForm(){
  pad(0);cnt();
  ["gc","sc"].forEach(i=>sigInit(i,i=="gc"?s.gs:s.ss));
 }
-function cnt(){const e=$("#cnt");if(e){const n=Object.keys(st[cur].photos).length;e.textContent=st[cur].marks.size+" novedad(es) marcada(s)"+(n?" · "+n+" foto(s)":"")}}
+function cnt(){const e=$("#cnt");if(e){const n=nph(st[cur]);e.textContent=st[cur].marks.size+" novedad(es) marcada(s)"+(n?" · "+n+" foto(s)":"")}}
 function sigInit(id,img){
  const c=document.getElementById(id),r=c.getBoundingClientRect(),dpr=window.devicePixelRatio||1;
  c.width=r.width*dpr;c.height=r.height*dpr;const x=c.getContext("2d");x.scale(dpr,dpr);x.lineWidth=2;x.lineCap="round";x.strokeStyle="#111";
@@ -121,8 +121,8 @@ async function send(){
  if(!s.date||!s.guard.trim()||!s.sup.trim())return msg("Complete la fecha y el nombre del guarda y del supervisor.","err");
  if(!s.gs||!s.ss)return msg("Faltan las firmas del guarda y/o del supervisor.","err");
  const rid=cur+"-"+s.date.replace(/-/g,"")+"-"+Date.now(),ph=[],nov=[];
- def.secs.forEach(sec=>sec.r.forEach((nm,i)=>{const cs=[],im=s.photos[sec.k+"|"+i];for(let c=0;c<8;c++)if(s.marks.has(sec.k+"|"+i+"|"+c))cs.push(COLS[c]);
-  if(cs.length||im){const e={s:sec.t,r:String(i+1).padStart(2,"0")+" "+nm,c:cs};if(im){e.f=rid+"_"+ph.length;ph.push({id:e.f,d:im})}nov.push(e)}}));
+ def.secs.forEach(sec=>sec.r.forEach((nm,i)=>{const cs=[],ims=s.photos[sec.k+"|"+i]||[];for(let c=0;c<8;c++)if(s.marks.has(sec.k+"|"+i+"|"+c))cs.push(COLS[c]);
+  if(cs.length||ims.length){const e={s:sec.t,r:String(i+1).padStart(2,"0")+" "+nm,c:cs};if(ims.length)e.fs=ims.map(d=>{const pid=rid+"_"+ph.length;ph.push({id:pid,d});return pid});nov.push(e)}}));
  const rooms=def.secs.reduce((a,x)=>a+x.r.length,0);
  const doc={type:cur,title:def.n,date:s.date,signedAt:s.gt||Date.now(),guard:s.guard.trim(),sup:s.sup.trim(),gs:s.gs,ss:s.ss,obs:s.obs.trim(),nov,rooms,total:nov.reduce((a,x)=>a+x.c.length,0),createdAt:Date.now(),by:UID};
  if(!confirm("¿Finalizar y enviar el reporte? No podrá modificarse después."))return;
@@ -155,13 +155,13 @@ function renderDash(){
  if(!L.length)h+='<div class="card mu">No hay reportes enviados con estos filtros.</div>';
  L.forEach(d=>{h+=`<div class="card"><div class="row"><b>${esc(d.title)}</b><span class="pill ${d.total?"":"ok"}">${d.total?d.total+" novedad(es)":"Sin novedad"}</span></div>
  <div class="mu">Fecha: ${esc(d.date)} · Firma del guarda: ${new Date(d.signedAt||d.createdAt).toLocaleString("es-CO")} · Guarda: ${esc(d.guard)} · Supervisor: ${esc(d.sup)}</div>
- <details><summary>Ver detalle y firmas</summary>${d.nov.map(n=>`<div style="margin:6px 0"><b>${esc(n.r)}</b> <span class="mu">${esc(n.s)}</span><br>${n.c.map(c=>`<span class="pill">${esc(c)}</span>`).join(" ")}${n.f?` <button class="btn" data-ph="${esc(n.f)}">📷 Ver foto</button>`:""}</div>`).join("")||'<p class="mu">Sin novedades.</p>'}
+ <details><summary>Ver detalle y firmas</summary>${d.nov.map(n=>`<div style="margin:6px 0"><b>${esc(n.r)}</b> <span class="mu">${esc(n.s)}</span><br>${n.c.map(c=>`<span class="pill">${esc(c)}</span>`).join(" ")}${(n.fs||(n.f?[n.f]:[])).map((f,j)=>` <button class="btn" data-ph="${esc(f)}">📷 Foto ${j+1}</button>`).join("")}</div>`).join("")||'<p class="mu">Sin novedades.</p>'}
  ${d.obs?`<p><b>Observaciones:</b> ${esc(d.obs)}</p>`:""}
  <div class="row"><div><div class="mu">Guarda</div><img class="sig" src="${d.gs}"></div><div><div class="mu">Supervisor</div><img class="sig" src="${d.ss}"></div></div></details></div>`});
  ED.flash="";$("#dash").innerHTML=h;$("#fl").value=f;$("#ft").value=ft;
  $("#fl").onchange=$("#ft").onchange=renderDash;
- $("#csv").onclick=async()=>{const rows=[["Reporte","Fecha","Firma guarda","Guarda","Supervisor","Sección","Aula","Novedades","Foto","Observaciones"]];
-  L.forEach(d=>{if(!d.nov.length)rows.push([d.title,d.date,new Date(d.signedAt||d.createdAt).toISOString(),d.guard,d.sup,"","","Sin novedad","",d.obs]);d.nov.forEach(n=>rows.push([d.title,d.date,new Date(d.signedAt||d.createdAt).toISOString(),d.guard,d.sup,n.s,n.r,n.c.join("; "),n.f?"Sí":"",d.obs]))});
+ $("#csv").onclick=async()=>{const rows=[["Reporte","Fecha","Firma guarda","Guarda","Supervisor","Sección","Aula","Novedades","Fotos","Observaciones"]];
+  L.forEach(d=>{if(!d.nov.length)rows.push([d.title,d.date,new Date(d.signedAt||d.createdAt).toISOString(),d.guard,d.sup,"","","Sin novedad","",d.obs]);d.nov.forEach(n=>rows.push([d.title,d.date,new Date(d.signedAt||d.createdAt).toISOString(),d.guard,d.sup,n.s,n.r,n.c.join("; "),(n.fs||(n.f?[n.f]:[])).length||"",d.obs]))});
   const data="\ufeff"+rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(",")).join("\n");
   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([data],{type:"text/csv;charset=utf-8"}));a.download="reportes-novedades.csv";a.click()};
  if($("#lo"))$("#lo").onclick=()=>FB.logout();
@@ -236,37 +236,44 @@ document.addEventListener("click",async e=>{
   }catch(err){edMsg("No se pudo guardar: "+esc(err.message||err),"err")}
  }
 });
-safe(()=>applyLayout(JSON.parse(localStorage.getItem("lay"))));
 
-/* ===== Evidencia fotográfica (opcional por casilla) ===== */
-let PK=null,PR=null;
+/* ===== Evidencia fotográfica (opcional, hasta 2 por casilla) ===== */
+let PK=null,PR=null,PJ=null;
+const MAXF=2,MAXT=48;
+const nph=x=>Object.values(x.photos).reduce((a,v)=>a+v.length,0);
+function normPh(o){const r={};if(o&&typeof o=="object")Object.keys(o).forEach(k=>{const v=[].concat(o[k]||[]).filter(x=>typeof x=="string").slice(0,MAXF);if(v.length)r[k]=v});return r}
+function cellHtml(a){a=a||[];return a.map((x,j)=>`<img data-j="${j}" src="${x}">`).join("")+'<span>📷</span>'.repeat(MAXF-a.length)}
 function shrink(file){return new Promise((res,rej)=>{
  const u=URL.createObjectURL(file),im=new Image();
  im.onload=()=>{const k=Math.min(1,800/Math.max(im.width,im.height)),w=Math.round(im.width*k),h=Math.round(im.height*k),c=document.createElement("canvas");
   c.width=w;c.height=h;c.getContext("2d").drawImage(im,0,0,w,h);URL.revokeObjectURL(u);
-  let q=.7,d=c.toDataURL("image/jpeg",q);while(d.length>90000&&q>.35){q-=.1;d=c.toDataURL("image/jpeg",q)}res(d)};
+  let q=.7,d=c.toDataURL("image/jpeg",q);while(d.length>70000&&q>.35){q-=.1;d=c.toDataURL("image/jpeg",q)}res(d)};
  im.onerror=()=>{URL.revokeObjectURL(u);rej(new Error("imagen no válida"))};im.src=u})}
-function pick(k){PK=k;PR=cur;const f=$("#pf");f.value="";f.click()}
-function setCell(k){const c=document.querySelector('td.p[data-p="'+k+'"]');if(!c)return;const im=st[cur].photos[k];c.textContent="";
- if(im){const i=document.createElement("img");i.src=im;c.appendChild(i)}else c.textContent="📷"}
+function pick(k,j){PK=k;PJ=(j===undefined||j===null)?null:j;PR=cur;const f=$("#pf");f.value="";f.click()}
+function setCell(k){const c=document.querySelector('td.p[data-p="'+k+'"]');if(c)c.innerHTML=cellHtml(st[cur].photos[k])}
 function pvClose(){const o=$("#pv");if(o)o.remove()}
-function pvShow(src,key){
+function pvShow(src,key,j){
  pvClose();const d=document.createElement("div");d.id="pv";
  const i=document.createElement("img");i.src=src;d.appendChild(i);
  const r=document.createElement("div");r.className="row";r.style.justifyContent="center";
  r.innerHTML=(key?'<button class="btn" data-pv="re">Cambiar foto</button><button class="btn" data-pv="rm">Quitar foto</button>':'')+'<button class="btn pr" data-pv="x">Cerrar</button>';
- d.appendChild(r);d.dataset.k=key||"";document.body.appendChild(d)}
+ d.appendChild(r);d.dataset.k=key||"";d.dataset.j=(j===undefined?"":j);document.body.appendChild(d)}
 $("#pf").addEventListener("change",async e=>{
- const f=e.target.files[0];if(!f||!PK||PR!==cur)return;const s=st[cur];
- if(!s.photos[PK]&&Object.keys(s.photos).length>=20){alert("Máximo 20 fotos por reporte.");return}
- try{s.photos[PK]=await shrink(f);setCell(PK);saveDraft();cnt()}catch(err){alert("No se pudo procesar la foto.")}
+ const f=e.target.files[0];if(!f||!PK||PR!==cur)return;
+ const s=st[cur],a=(s.photos[PK]||[]).slice(),k=PK,j=PJ;
+ if(j===null&&a.length>=MAXF)return;
+ if(j===null&&nph(s)>=MAXT){alert("Máximo "+MAXT+" fotos por reporte.");return}
+ try{const d=await shrink(f);if(j===null)a.push(d);else a[j]=d;s.photos[k]=a;setCell(k);saveDraft();cnt()}
+ catch(err){alert("No se pudo procesar la foto.")}
 });
 document.addEventListener("click",e=>{
- const t=e.target,pc=t.closest&&t.closest("td.p"),a=t.dataset&&t.dataset.pv,dp=t.dataset&&t.dataset.ph;
- if(pc){const k=pc.dataset.p,im=st[cur].photos[k];if(im)pvShow(im,k);else pick(k);return}
- if(a){const k=($("#pv")||{dataset:{}}).dataset.k;pvClose();
-  if(a=="re")pick(k);
-  if(a=="rm"&&confirm("¿Quitar esta foto?")){delete st[cur].photos[k];setCell(k);saveDraft();cnt()}
+ const t=e.target,pc=t.closest&&t.closest("td.p"),act=t.dataset&&t.dataset.pv,dp=t.dataset&&t.dataset.ph;
+ if(pc){const k=pc.dataset.p,a=st[cur].photos[k]||[],j=t.dataset?t.dataset.j:undefined;
+  if(j!==undefined&&a[+j])pvShow(a[+j],k,+j);else if(a.length<MAXF)pick(k,null);
+  return}
+ if(act){const o=$("#pv")||{dataset:{}},k=o.dataset.k,j=+o.dataset.j;pvClose();
+  if(act=="re")pick(k,j);
+  if(act=="rm"&&confirm("¿Quitar esta foto?")){const a=(st[cur].photos[k]||[]).slice();a.splice(j,1);if(a.length)st[cur].photos[k]=a;else delete st[cur].photos[k];setCell(k);saveDraft();cnt()}
   return}
  if(dp){if(!window.FB)return;FB.photo(dp).then(d=>pvShow(d,null)).catch(()=>alert("No se pudo cargar la foto."))}
 });
@@ -285,12 +292,13 @@ function restoreDraft(){
  safe(()=>{
   const o=JSON.parse(localStorage.getItem("draft")||"null");if(!o)return;
   ["r1","r2"].forEach(id=>{const d=o[id];if(!d)return;
-   st[id]={marks:new Set(d.marks||[]),date:d.date||today(),guard:d.guard||"",sup:d.sup||"",obs:d.obs||"",gs:d.gs||null,ss:d.ss||null,gt:d.gt||null,photos:d.photos||{}}});
+   st[id]={marks:new Set(d.marks||[]),date:d.date||today(),guard:d.guard||"",sup:d.sup||"",obs:d.obs||"",gs:d.gs||null,ss:d.ss||null,gt:d.gt||null,photos:normPh(d.photos)}});
   if(o.view=="r1"||o.view=="r2"||o.view=="dash")VIEW=o.view;
   if(VIEW!="dash")cur=VIEW;
   SCR=o.y||0;
  });
 }
+safe(()=>applyLayout(JSON.parse(localStorage.getItem("lay"))));
 restoreDraft();
 document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.v==VIEW));
 if(VIEW=="dash"){$("#form").classList.add("hide");$("#dash").classList.remove("hide")}
