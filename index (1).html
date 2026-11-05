@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8"><title>Reporte diario de novedades – AIS</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+:root{--bg:#f5f6f9;--sf:#fff;--tx:#1b2230;--mu:#6a7385;--bd:#d5d9e2;--pr:#1d3f8f;--ye:#f6d54a;--rd:#c0392b;--rb:#fdecea;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12161f;--sf:#1b212d;--tx:#e8ebf2;--mu:#99a2b5;--bd:#333c4e;--pr:#7ea3ff;--ye:#8a7316;--rd:#ff8a7a;--rb:#3b1f1c;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#12161f;--sf:#1b212d;--tx:#e8ebf2;--mu:#99a2b5;--bd:#333c4e;--pr:#7ea3ff;--ye:#8a7316;--rd:#ff8a7a;--rb:#3b1f1c;color-scheme:dark}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}html,body{overscroll-behavior-y:none}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--sf);z-index:10}
+header{position:sticky;top:env(safe-area-inset-top,0px);background:var(--sf);border-bottom:1px solid var(--bd);z-index:5;padding:8px 12px}
+h1{font-size:15px;margin:0 0 6px}nav{display:flex;gap:6px;flex-wrap:wrap}
+nav button,.btn{border:1px solid var(--bd);background:var(--sf);color:var(--tx);padding:8px 12px;border-radius:8px;font:inherit;cursor:pointer}
+nav button.on,.btn.pr{background:var(--pr);color:#fff;border-color:var(--pr)}
+html[data-theme=dark] nav button.on,html[data-theme=dark] .btn.pr{color:#111}
+main{max-width:1000px;margin:0 auto;padding:12px}
+.card{background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:12px;margin-bottom:14px}
+.sec{background:var(--ye);color:#222;font-weight:700;text-align:center;padding:6px;border-radius:6px;margin:16px 0 6px}
+.wrap{overflow-x:auto;border:1px solid var(--bd);border-radius:8px;max-width:100%}
+table{border-collapse:collapse;width:100%;min-width:640px;font-size:13px}
+th,td{border:1px solid var(--bd);padding:0;text-align:center}
+th{background:var(--bg);padding:4px;font-size:12px}
+td.n{text-align:left;padding:4px 6px;position:sticky;left:0;background:var(--sf);min-width:150px;z-index:1}
+td.n small{color:var(--mu)}
+td.c{width:52px;height:38px;cursor:pointer;user-select:none;color:var(--mu)}
+td.c.x{background:var(--rb);color:var(--rd);font-weight:700}
+input,textarea,select{font:inherit;color:var(--tx);background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:8px;width:100%}
+.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+label{font-size:12px;color:var(--mu);display:block;margin-bottom:3px}
+canvas{width:100%;height:120px;border:1px dashed var(--mu);border-radius:8px;background:#fff;touch-action:none}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.mu{color:var(--mu);font-size:12px}
+.k{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:12px}
+.k div{background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px}.k b{font-size:22px;display:block}
+.pill{display:inline-block;padding:1px 8px;border-radius:99px;background:var(--rb);color:var(--rd);font-size:12px}
+.ok{background:#e1f5e8;color:#1c7a3f}.msg{padding:8px;border-radius:8px;margin:8px 0}.err{background:var(--rb);color:var(--rd)}.good{background:#e1f5e8;color:#1c7a3f}
+details{border-top:1px solid var(--bd);padding:8px 0}summary{cursor:pointer}
+.sig{max-width:260px;background:#fff;border:1px solid var(--bd);border-radius:6px}
+.hide{display:none}
+td.p{width:96px;min-width:96px;cursor:pointer;font-size:18px;user-select:none;white-space:nowrap}
+td.p img{display:inline-block;vertical-align:middle;width:40px;height:34px;object-fit:cover;margin:2px;border-radius:4px}
+#pv{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:12px}
+#pv img{max-width:100%;max-height:70vh;border-radius:8px}
+</style></head><body>
+<header><h1>AIS · Reporte diario de novedades</h1>
+<nav><button data-v="r1" class="on">Reporte 1</button><button data-v="r2">Reporte 2</button><button data-v="dash">Dashboard</button></nav></header>
+<main>
+<div id="form"></div>
+<div id="dash" class="hide"></div>
+</main>
+<input type="file" accept="image/*" capture="environment" id="pf" class="hide">
+<script>
+const COLS=["Puerta abierta","Puerta cerrada","Cerradura B/E","Cerradura M/E","Aire ON","Aire OFF","Luces ON","Luces OFF"];
+const HD=[["Puertas",["Abierta","Cerrada"]],["Cerradura",["B/E","M/E"]],["Aire acond.",["ON","OFF"]],["Luces",["ON","OFF"]]];
+const S=(k,t,r)=>({k,t,r:r.split("|")});
+const R={
+r1:{n:"Reporte 1 · Centro de Innovación, Edificio Administrativo y Cafetorium",secs:[
+S("ci1","Centro de Innovación – Primer piso (1)","Knowledge Lab|Código-Robótica|Laboratorio de audiovisuales|Ofic Johanna Pallares|Fotocopias|Ofic Stefanny Viscaino|Sustentabilidad|Baños niñas|Baños niños|Oficina programador|Cuarto aires acondicionados|Shark café|Biblioteca|Bodega No.1 camerinos|Baño hombres camerino|Baño mujeres camerino|Bodega No.2 camerinos|Oficina Jeferson Olmos|Oficina tecnología Manuel Arnache|Oficina tecnología Kevin"),
+S("ci2","Centro de Innovación – Segundo piso (2)","Laboratorio química|Laboratorio biología|Laboratorio física|Bodega Laboratorios insumos químicos|Office tecnología|Makerspace|Cuarto de aseo|Office Director I.C.|Baños niños|Baños niñas|Fab lab"),
+S("ci3","Centro de Innovación – Tercer piso (3)","Salón Bellas artes|Puerta de balcón|Puerta azotea|Bodega de Arte|Cuarto de Aires|Ofic. Dpto Música|Bodega música|Baños niñas|Baños niños|Drama|Estudio música 1|Estudio música 2|Estudio música 3|Salón de música / Music hall"),
+S("ad1","Edificio Administrativo – Primer piso (1)","Baño externo|Bodega Sr Henry"),
+S("ad2","Edificio Administrativo – Segundo piso","Baño externo|Oficina Jackeline V|Oficina ms Priscila|Admisiones|Secretaría académica|SST- Maryuris|Movilizate José C.|Control academy|Rack Principal|Comunicaciones|Baño interno comunitario|Comunicaciones (2)"),
+S("ad3","Edificio Administrativo – Tercer piso","Baño externo|Cartera|Tesorería|Contabilidad|Gestión Humana|Bodega ms Priscila|Oficina MR Henry|Cuarto de aseo|Oficina Henry Anto"),
+S("caf","Cafetorium","Cuarto staff No.1|Cuarto staff No.2|Puesto de sonido (1)|Baños niñas|Baños niños|Bodega pequeña|Cocina|Bodega de cocina|Oficina de alimentación|Ingreso personal de cocina|Puesto de sonido (2)")]},
+r2:{n:"Reporte 2 · Edificio Académico (3 pisos)",secs:[
+S("ac1","Edificio Académico – Primer piso (1)","Nursery Wasser|Nursery Dufy|Baños niños|Baños niñas|PreKinder-C|Vicerrectoría PP|PreKinder-B|Enfermería|PreKinder-A|2-A|Janintor-Feliz|Petit Cafetorium|Baños niños|Baños niñas|Dpto Spanish|2-C|2-B|Vicerrectoría Elem|Sala profesores Elem|3-C|Psicología|Ricardo Copias|3-A|3-B|Baños niños|Baños niñas|Subest/Eléctrica|4-B|4-C"),
+S("ac2","Edificio Académico – Segundo piso (2)","4-A|Psicología Alejandra|5-A|Baños niñas|Baños niños|5-B|6-B|6-A|Psicología Silvia|Salón vacío|Convivencia|7-A|7-B|Psicología Nelly|Atelier|Baños niños|Baños niñas|1-C|1-B|Gim win center|1-A|Sala profesores PP|Kinder-A|Kinder-C|Baño niñas|Baño niños|Kinder-B"),
+S("ac3","Edificio Académico – Tercer piso (3)","Octavo-A|Octavo-B|Vicerrectoría Bachillerato|Once-A|Once-B|The Fin zone|Psicología Hugo S|Sala profesores Bachi|Noveno-A|Noveno-B|Baños niños|Baños niñas|Décimo-A|Oficina control interno|Décimo-B|Doce A|Doce B|Sala profesores N|Baños niñas|Baños niños")]}
+};
+const $=s=>document.querySelector(s),esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let cur="r1",st={r1:null,r2:null},UID=null,AUTH=false,all=[];
+function setAll(a,au){all=a;AUTH=au;if(!$("#dash").classList.contains("hide"))renderDash()}
+const today=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+const fresh=()=>({marks:new Set(),photos:{},gt:null,date:today(),guard:"",sup:"",obs:"",gs:null,ss:null});
+st.r1=fresh();st.r2=fresh();
+function safe(f,d){try{return f()}catch(e){return d}}
+
+function pad(a){const w=a;return w}
+function renderForm(){
+ const id=cur,def=R[id],s=st[id];
+ let h=`<div class="card"><b>${esc(def.n)}</b><div class="g" style="margin-top:10px"><div><label>Fecha (día/mes/año)</label><input type="date" id="fd" value="${s.date}"></div></div>
+ <p class="mu">Toque una casilla para marcar <b>SÍ</b> (novedad). Las casillas con raya “—” = sin novedad.</p></div>`;
+ def.secs.forEach(sec=>{
+  h+=`<div class="sec">${esc(sec.t)}</div><div class="wrap"><table><thead><tr><th rowspan="2">No. / Aula</th><th rowspan="2">Foto</th>${HD.map(x=>`<th colspan="2">${x[0]}</th>`).join("")}</tr><tr>${HD.map(x=>x[1].map(y=>`<th>${y}</th>`).join("")).join("")}</tr></thead><tbody>`;
+  sec.r.forEach((nm,i)=>{h+=`<tr><td class="n"><small>${String(i+1).padStart(2,"0")}</small> ${esc(nm)}</td>`;{const pk=sec.k+"|"+i;h+=`<td class="p" data-p="${pk}">${cellHtml(s.photos[pk])}</td>`}
+   for(let c=0;c<8;c++){const x=s.marks.has(sec.k+"|"+i+"|"+c);h+=`<td class="c${x?" x":""}" data-k="${sec.k}|${i}|${c}">${x?"SÍ":"—"}</td>`}
+   h+="</tr>"});
+  h+="</tbody></table></div>"});
+ h+=`<div class="card" style="margin-top:14px"><label>Observaciones generales (opcional)</label><textarea id="ob" rows="3">${esc(s.obs)}</textarea></div>
+ <div class="card"><div class="g">
+ <div><label>Guarda de turno – Nombre</label><input id="gn" value="${esc(s.guard)}"><label style="margin-top:8px">Firma</label><canvas id="gc"></canvas><button class="btn" data-clr="gc">Borrar firma</button></div>
+ <div><label>Supervisor de turno – Nombre</label><input id="sn" value="${esc(s.sup)}"><label style="margin-top:8px">Firma</label><canvas id="sc"></canvas><button class="btn" data-clr="sc">Borrar firma</button></div></div>
+ <div id="fm"></div><div class="row" style="margin-top:12px"><button class="btn pr" id="send">Finalizar y enviar reporte</button><span class="mu" id="cnt"></span></div></div>`;
+ $("#form").innerHTML=h;
+ pad(0);cnt();
+ ["gc","sc"].forEach(i=>sigInit(i,i=="gc"?s.gs:s.ss));
+}
+function cnt(){const e=$("#cnt");if(e){const n=nph(st[cur]);e.textContent=st[cur].marks.size+" novedad(es) marcada(s)"+(n?" · "+n+" foto(s)":"")}}
+function sigInit(id,img){
+ const c=document.getElementById(id),r=c.getBoundingClientRect(),dpr=window.devicePixelRatio||1;
+ c.width=r.width*dpr;c.height=r.height*dpr;const x=c.getContext("2d");x.scale(dpr,dpr);x.lineWidth=2;x.lineCap="round";x.strokeStyle="#111";
+ if(img){const im=new Image();im.onload=()=>x.drawImage(im,0,0,r.width,r.height);im.src=img}
+ let d=false,l;const p=e=>{const b=c.getBoundingClientRect();return[e.clientX-b.left,e.clientY-b.top]};
+ c.onpointerdown=e=>{d=true;l=p(e);c.setPointerCapture(e.pointerId)};
+ c.onpointermove=e=>{if(!d)return;const q=p(e);x.beginPath();x.moveTo(...l);x.lineTo(...q);x.stroke();l=q};
+ c.onpointerup=()=>{d=false;st[cur][id=="gc"?"gs":"ss"]=c.toDataURL("image/png");if(id=="gc")st[cur].gt=Date.now()};
+}
+document.addEventListener("click",e=>{
+ const t=e.target;
+ if(t.dataset.v){["r1","r2","dash"].forEach(v=>0);document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b===t));
+  if(t.dataset.v=="dash"){$("#form").classList.add("hide");$("#dash").classList.remove("hide");renderDash()}
+  else{cur=t.dataset.v;$("#dash").classList.add("hide");$("#form").classList.remove("hide");renderForm()}return}
+ if(t.classList.contains("c")){const k=t.dataset.k,s=st[cur].marks;s.has(k)?s.delete(k):s.add(k);t.classList.toggle("x");t.textContent=s.has(k)?"SÍ":"—";cnt();return}
+ if(t.dataset.clr){const c=document.getElementById(t.dataset.clr);c.getContext("2d").clearRect(0,0,c.width,c.height);st[cur][t.dataset.clr=="gc"?"gs":"ss"]=null;if(t.dataset.clr=="gc")st[cur].gt=null;return}
+ if(t.id=="send")send();
+ if(t.id=="li")FB.login($("#le").value,$("#lp").value).catch(()=>{$("#lm").innerHTML='<div class="msg err">Correo o contraseña incorrectos.</div>'});
+});
+document.addEventListener("input",e=>{const s=st[cur];if(e.target.id=="gn")s.guard=e.target.value;if(e.target.id=="sn")s.sup=e.target.value;if(e.target.id=="ob")s.obs=e.target.value;if(e.target.id=="fd")s.date=e.target.value});
+function msg(t,c){$("#fm").innerHTML=`<div class="msg ${c}">${t}</div>`}
+async function send(){
+ const s=st[cur],def=R[cur];
+ if(!s.date||!s.guard.trim()||!s.sup.trim())return msg("Complete la fecha y el nombre del guarda y del supervisor.","err");
+ if(!s.gs||!s.ss)return msg("Faltan las firmas del guarda y/o del supervisor.","err");
+ const rid=cur+"-"+s.date.replace(/-/g,"")+"-"+Date.now(),ph=[],nov=[];
+ def.secs.forEach(sec=>sec.r.forEach((nm,i)=>{const cs=[],ims=s.photos[sec.k+"|"+i]||[];for(let c=0;c<8;c++)if(s.marks.has(sec.k+"|"+i+"|"+c))cs.push(COLS[c]);
+  if(cs.length||ims.length){const e={s:sec.t,r:String(i+1).padStart(2,"0")+" "+nm,c:cs};if(ims.length)e.fs=ims.map(d=>{const pid=rid+"_"+ph.length;ph.push({id:pid,d});return pid});nov.push(e)}}));
+ const rooms=def.secs.reduce((a,x)=>a+x.r.length,0);
+ const doc={type:cur,title:def.n,date:s.date,signedAt:s.gt||Date.now(),guard:s.guard.trim(),sup:s.sup.trim(),gs:s.gs,ss:s.ss,obs:s.obs.trim(),nov,rooms,total:nov.reduce((a,x)=>a+x.c.length,0),createdAt:Date.now(),by:UID};
+ if(!confirm("¿Finalizar y enviar el reporte? No podrá modificarse después."))return;
+ $("#send").disabled=true;
+ const id=rid;
+ try{
+  if(!window.FB)throw new Error("Firebase no cargó");
+  await FB.add(id,doc,ph);
+  msg("✔ Reporte enviado y guardado ("+id+"). Ya aparece en el Dashboard.","good");
+  st[cur]=fresh();saveDraft();setTimeout(renderForm,2500);
+ }catch(err){
+  const q=safe(()=>JSON.parse(localStorage.getItem("pend")||"[]"),[]);q.push({id,doc,ph});
+  safe(()=>localStorage.setItem("pend",JSON.stringify(q)));
+  msg("No se pudo enviar ("+esc(err.message||err)+"). Se guardó una copia pendiente en este dispositivo; abra la página con sesión iniciada para reenviarla.","err");$("#send").disabled=false;
+ }
+}
+async function flush(){
+ if(!window.FB)return;const q=safe(()=>JSON.parse(localStorage.getItem("pend")||"[]"),[]);if(!q.length)return;
+ const rest=[];for(const p of q){try{await FB.add(p.id,p.doc,p.ph)}catch(e){const m=String(e.message||e);if(!/permission|already|denied/i.test(m)||(p.ph&&p.ph.length&&(p.t=(p.t||0)+1)<6))rest.push(p)}}
+ safe(()=>localStorage.setItem("pend",JSON.stringify(rest)));
+}
+function renderDash(){
+ if(!AUTH){ED.on=false;$("#dash").innerHTML=`<div class="card"><b>Dashboard – acceso restringido</b><p class="mu">Ingrese con su correo y contraseña de supervisor/administrador.</p><div class="g"><div><label>Correo</label><input id="le" type="email"></div><div><label>Contraseña</label><input id="lp" type="password"></div></div><div class="row" style="margin-top:10px"><button class="btn pr" id="li">Ingresar</button></div><div id="lm"></div></div>`;return}
+ const f=($("#fl")||{}).value||"",ft=($("#ft")||{}).value||"";
+ let L=all.filter(d=>(!f||d.date==f)&&(!ft||d.type==ft));
+ const nv=L.reduce((a,d)=>a+d.total,0),cn=L.filter(d=>d.total).length;
+ let h=(ED.flash?'<div class="msg good">'+ED.flash+'</div>':"")+(ED.on?edHtml():"")+`<div class="k"><div><b>${L.length}</b>Reportes</div><div><b>${nv}</b>Novedades marcadas</div><div><b>${cn}</b>Reportes con novedad</div><div><b>${new Set(L.map(d=>d.date)).size}</b>Días</div></div>
+ <div class="card"><div class="g"><div><label>Fecha</label><input type="date" id="fl" value="${f}"></div><div><label>Reporte</label><select id="ft"><option value="">Todos</option><option value="r1">Reporte 1</option><option value="r2">Reporte 2</option></select></div></div>
+ <div class="row" style="margin-top:10px"><button class="btn" id="csv">Descargar CSV</button><button class="btn" data-ed="open">Editor de casillas</button><button class="btn" id="lo">Cerrar sesión</button><span class="mu">Datos guardados en Firebase (solo lectura, sin edición ni borrado).</span></div></div>`;
+ h+=pdfCard();
+ if(!L.length)h+='<div class="card mu">No hay reportes enviados con estos filtros.</div>';
+ L.forEach(d=>{h+=`<div class="card"><div class="row"><b>${esc(d.title)}</b><span class="pill ${d.total?"":"ok"}">${d.total?d.total+" novedad(es)":"Sin novedad"}</span></div>
+ <div class="mu">Fecha: ${esc(d.date)} · Firma del guarda: ${new Date(d.signedAt||d.createdAt).toLocaleString("es-CO")} · Guarda: ${esc(d.guard)} · Supervisor: ${esc(d.sup)}</div>
+ <details><summary>Ver detalle y firmas</summary>${d.nov.map(n=>`<div style="margin:6px 0"><b>${esc(n.r)}</b> <span class="mu">${esc(n.s)}</span><br>${n.c.map(c=>`<span class="pill">${esc(c)}</span>`).join(" ")}${(n.fs||(n.f?[n.f]:[])).map((f,j)=>` <button class="btn" data-ph="${esc(f)}">📷 Foto ${j+1}</button>`).join("")}</div>`).join("")||'<p class="mu">Sin novedades.</p>'}
+ ${d.obs?`<p><b>Observaciones:</b> ${esc(d.obs)}</p>`:""}
+ <div class="row"><div><div class="mu">Guarda</div><img class="sig" src="${d.gs}"></div><div><div class="mu">Supervisor</div><img class="sig" src="${d.ss}"></div></div></details></div>`});
+ ED.flash="";$("#dash").innerHTML=h;$("#fl").value=f;$("#ft").value=ft;
+ $("#fl").onchange=$("#ft").onchange=renderDash;
+ $("#csv").onclick=async()=>{const rows=[["Reporte","Fecha","Firma guarda","Guarda","Supervisor","Sección","Aula","Novedades","Fotos","Observaciones"]];
+  L.forEach(d=>{if(!d.nov.length)rows.push([d.title,d.date,new Date(d.signedAt||d.createdAt).toISOString(),d.guard,d.sup,"","","Sin novedad","",d.obs]);d.nov.forEach(n=>rows.push([d.title,d.date,new Date(d.signedAt||d.createdAt).toISOString(),d.guard,d.sup,n.s,n.r,n.c.join("; "),(n.fs||(n.f?[n.f]:[])).length||"",d.obs]))});
+  const data="\ufeff"+rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(",")).join("\n");
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([data],{type:"text/csv;charset=utf-8"}));a.download="reportes-novedades.csv";a.click()};
+ if($("#lo"))$("#lo").onclick=()=>FB.logout();
+}
+
+/* ===== Editor de casillas (solo autorizados del Dashboard) ===== */
+const ED={on:false,rep:"r1",sec:0,draft:null,flash:""};
+const cl=o=>JSON.parse(JSON.stringify(o));
+function applyLayout(o){
+ let ch=false;
+ ["r1","r2"].forEach(id=>{
+  const secs=o&&o[id];
+  if(!Array.isArray(secs)||!secs.length)return;
+  const ok=secs.every(x=>x&&typeof x.k=="string"&&typeof x.t=="string"&&Array.isArray(x.r)&&x.r.every(n=>typeof n=="string"));
+  if(!ok)return;
+  const old=R[id].secs;
+  secs.forEach(ns=>{const os=old.find(z=>z.k==ns.k);
+   if(!os||JSON.stringify(os.r)!=JSON.stringify(ns.r)){[...st[id].marks].forEach(m=>{if(m.split("|")[0]==ns.k)st[id].marks.delete(m)});Object.keys(st[id].photos||{}).forEach(k=>{if(k.split("|")[0]==ns.k)delete st[id].photos[k]})}});
+  if(JSON.stringify(old)!=JSON.stringify(secs)){R[id].secs=secs.map(x=>({k:x.k,t:x.t,r:x.r.slice()}));ch=true}
+ });
+ if(ch){
+  saveDraft();
+  if(!$("#form").classList.contains("hide"))renderForm();
+  if(!$("#dash").classList.contains("hide"))renderDash();
+ }
+}
+function edOpen(){ED.draft={r1:cl(R.r1.secs),r2:cl(R.r2.secs)};ED.on=true;ED.sec=0;renderDash()}
+function edMsg(t,c){const e=$("#edm");if(e)e.innerHTML=`<div class="msg ${c}">${t}</div>`}
+function edHtml(){
+ const secs=ED.draft[ED.rep];if(ED.sec>=secs.length)ED.sec=0;
+ const sec=secs[ED.sec];
+ const rows=sec.r.map((nm,i)=>`<div class="row" style="margin:4px 0;flex-wrap:nowrap"><small class="mu" style="min-width:22px">${String(i+1).padStart(2,"0")}</small><input data-ri="${i}" value="${esc(nm)}" style="min-width:0"><button class="btn" data-ed="up" data-i="${i}">↑</button><button class="btn" data-ed="dn" data-i="${i}">↓</button><button class="btn" data-ed="del" data-i="${i}">✕</button></div>`).join("")||'<p class="mu">Esta sección no tiene casillas.</p>';
+ return `<div class="card"><b>Editor de casillas</b>
+ <p class="mu">Añada, renombre, reordene (↑ ↓) o borre casillas. Al guardar, el cambio se aplica a todos los formularios. Los reportes ya enviados no se modifican.</p>
+ <div class="g"><div><label>Reporte</label><select id="edrep"><option value="r1"${ED.rep=="r1"?" selected":""}>Reporte 1</option><option value="r2"${ED.rep=="r2"?" selected":""}>Reporte 2</option></select></div>
+ <div><label>Sección</label><select id="edsec">${secs.map((x,i)=>`<option value="${i}"${i==ED.sec?" selected":""}>${esc(x.t)}</option>`).join("")}</select></div></div>
+ <div style="margin-top:10px">${rows}</div>
+ <div class="row" style="margin-top:8px;flex-wrap:nowrap"><input id="ednew" placeholder="Nombre de la nueva casilla" style="min-width:0"><button class="btn pr" data-ed="add">+ Añadir</button></div>
+ <div id="edm"></div>
+ <div class="row" style="margin-top:12px"><button class="btn pr" data-ed="save">Guardar cambios</button><button class="btn" data-ed="cancel">Cancelar</button></div></div>`;
+}
+document.addEventListener("change",e=>{
+ const t=e.target;if(!ED.on||!AUTH)return;
+ if(t.id=="edrep"){ED.rep=t.value;ED.sec=0;renderDash()}
+ if(t.id=="edsec"){ED.sec=+t.value;renderDash()}
+});
+document.addEventListener("input",e=>{
+ const t=e.target;
+ if(ED.on&&AUTH&&t.dataset&&t.dataset.ri!==undefined)ED.draft[ED.rep][ED.sec].r[+t.dataset.ri]=t.value;
+});
+document.addEventListener("click",async e=>{
+ const t=e.target,a=t.dataset&&t.dataset.ed;if(!a||!AUTH)return;
+ if(a=="open")return edOpen();
+ if(!ED.on)return;
+ const sec=ED.draft[ED.rep][ED.sec],i=+t.dataset.i;
+ if(a=="cancel"){ED.on=false;return renderDash()}
+ if(a=="add"){const v=($("#ednew").value||"").trim();if(!v)return edMsg("Escriba el nombre de la casilla.","err");sec.r.push(v);return renderDash()}
+ if(a=="del"){if(confirm("¿Borrar la casilla «"+sec.r[i]+"»?")){sec.r.splice(i,1);renderDash()}return}
+ if(a=="up"&&i>0){[sec.r[i-1],sec.r[i]]=[sec.r[i],sec.r[i-1]];return renderDash()}
+ if(a=="dn"&&i<sec.r.length-1){[sec.r[i+1],sec.r[i]]=[sec.r[i],sec.r[i+1]];return renderDash()}
+ if(a=="save"){
+  let bad=null;
+  ["r1","r2"].forEach(id=>ED.draft[id].forEach(x=>{x.r=x.r.map(n=>n.trim());if(!bad&&x.r.some(n=>!n))bad=x.t}));
+  if(bad)return edMsg("Hay casillas con el nombre vacío en: "+esc(bad)+".","err");
+  try{
+   if(!window.FB)throw new Error("Firebase no cargó");
+   const o={r1:ED.draft.r1,r2:ED.draft.r2};
+   await FB.saveLayout(o);
+   safe(()=>localStorage.setItem("lay",JSON.stringify(o)));
+   applyLayout(o);
+   ED.on=false;ED.flash="✔ Casillas actualizadas para todos los formularios.";renderDash();
+  }catch(err){edMsg("No se pudo guardar: "+esc(err.message||err),"err")}
+ }
+});
+
+/* ===== Evidencia fotográfica (opcional, hasta 2 por casilla) ===== */
+let PK=null,PR=null,PJ=null;
+const MAXF=2,MAXT=48;
+const nph=x=>Object.values(x.photos).reduce((a,v)=>a+v.length,0);
+function normPh(o){const r={};if(o&&typeof o=="object")Object.keys(o).forEach(k=>{const v=[].concat(o[k]||[]).filter(x=>typeof x=="string").slice(0,MAXF);if(v.length)r[k]=v});return r}
+function cellHtml(a){a=a||[];return a.map((x,j)=>`<img data-j="${j}" src="${x}">`).join("")+'<span>📷</span>'.repeat(MAXF-a.length)}
+function shrink(file){return new Promise((res,rej)=>{
+ const u=URL.createObjectURL(file),im=new Image();
+ im.onload=()=>{const k=Math.min(1,800/Math.max(im.width,im.height)),w=Math.round(im.width*k),h=Math.round(im.height*k),c=document.createElement("canvas");
+  c.width=w;c.height=h;c.getContext("2d").drawImage(im,0,0,w,h);URL.revokeObjectURL(u);
+  let q=.7,d=c.toDataURL("image/jpeg",q);while(d.length>70000&&q>.35){q-=.1;d=c.toDataURL("image/jpeg",q)}res(d)};
+ im.onerror=()=>{URL.revokeObjectURL(u);rej(new Error("imagen no válida"))};im.src=u})}
+function pick(k,j){PK=k;PJ=(j===undefined||j===null)?null:j;PR=cur;const f=$("#pf");f.value="";f.click()}
+function setCell(k){const c=document.querySelector('td.p[data-p="'+k+'"]');if(c)c.innerHTML=cellHtml(st[cur].photos[k])}
+function pvClose(){const o=$("#pv");if(o)o.remove()}
+function pvShow(src,key,j){
+ pvClose();const d=document.createElement("div");d.id="pv";
+ const i=document.createElement("img");i.src=src;d.appendChild(i);
+ const r=document.createElement("div");r.className="row";r.style.justifyContent="center";
+ r.innerHTML=(key?'<button class="btn" data-pv="re">Cambiar foto</button><button class="btn" data-pv="rm">Quitar foto</button>':'')+'<button class="btn pr" data-pv="x">Cerrar</button>';
+ d.appendChild(r);d.dataset.k=key||"";d.dataset.j=(j===undefined?"":j);document.body.appendChild(d)}
+$("#pf").addEventListener("change",async e=>{
+ const f=e.target.files[0];if(!f||!PK||PR!==cur)return;
+ const s=st[cur],a=(s.photos[PK]||[]).slice(),k=PK,j=PJ;
+ if(j===null&&a.length>=MAXF)return;
+ if(j===null&&nph(s)>=MAXT){alert("Máximo "+MAXT+" fotos por reporte.");return}
+ try{const d=await shrink(f);if(j===null)a.push(d);else a[j]=d;s.photos[k]=a;setCell(k);saveDraft();cnt()}
+ catch(err){alert("No se pudo procesar la foto.")}
+});
+document.addEventListener("click",e=>{
+ const t=e.target,pc=t.closest&&t.closest("td.p"),act=t.dataset&&t.dataset.pv,dp=t.dataset&&t.dataset.ph;
+ if(pc){const k=pc.dataset.p,a=st[cur].photos[k]||[],j=t.dataset?t.dataset.j:undefined;
+  if(j!==undefined&&a[+j])pvShow(a[+j],k,+j);else if(a.length<MAXF)pick(k,null);
+  return}
+ if(act){const o=$("#pv")||{dataset:{}},k=o.dataset.k,j=+o.dataset.j;pvClose();
+  if(act=="re")pick(k,j);
+  if(act=="rm"&&confirm("¿Quitar esta foto?")){const a=(st[cur].photos[k]||[]).slice();a.splice(j,1);if(a.length)st[cur].photos[k]=a;else delete st[cur].photos[k];setCell(k);saveDraft();cnt()}
+  return}
+ if(dp){if(!window.FB)return;FB.photo(dp).then(d=>pvShow(d,null)).catch(()=>alert("No se pudo cargar la foto."))}
+});
+
+/* ===== Reportes PDF semanal / mensual (diseño tipo factura Air-e, sin fotos) ===== */
+const PDF={w:today(),m:today().slice(0,7)};
+const MES=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const WD=["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+const fmtD=s=>String(s).split("-").reverse().join("/");
+const isoD=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const parseD=s=>{const p=String(s).split("-").map(Number);return new Date(p[0],p[1]-1,p[2]||1)};
+function weekRange(s){const d=parseD(s),w=(d.getDay()+6)%7,y=d.getFullYear(),m=d.getMonth(),n=d.getDate();return[isoD(new Date(y,m,n-w)),isoD(new Date(y,m,n-w+6))]}
+function monthRange(s){const d=parseD(s+"-01"),y=d.getFullYear(),m=d.getMonth();return[isoD(new Date(y,m,1)),isoD(new Date(y,m+1,0))]}
+function pdfCard(){
+ const r=weekRange(PDF.w||today());
+ return `<div class="card"><b>Reportes PDF</b><div class="g" style="margin-top:8px">
+ <div><label>Semana (elija cualquier día de la semana)</label><input type="date" id="pw" value="${PDF.w}"><div class="mu" style="margin:4px 0 8px">${fmtD(r[0])} al ${fmtD(r[1])} (lunes a domingo)</div><button class="btn pr" id="pdfw">Descargar PDF semanal</button></div>
+ <div><label>Mes</label><input type="month" id="pm" value="${PDF.m}"><div class="mu" style="margin:4px 0 8px">Mes calendario completo</div><button class="btn pr" id="pdfm">Descargar PDF mensual</button></div></div>
+ <div id="pdfmsg"></div></div>`}
+function pdfMsg(t,c){const e=$("#pdfmsg");if(e)e.innerHTML=`<div class="msg ${c}">${t}</div>`}
+document.addEventListener("change",e=>{const t=e.target;
+ if(t.id=="pw"){PDF.w=t.value||today();renderDash()}
+ if(t.id=="pm"){PDF.m=/^\d{4}-\d{2}$/.test(t.value)?t.value:today().slice(0,7);renderDash()}});
+document.addEventListener("click",e=>{const t=e.target;if(t.id=="pdfw")makePdf("w");if(t.id=="pdfm")makePdf("m")});
+function loadJs(u){return new Promise((ok,ko)=>{const s=document.createElement("script");s.src=u;s.onload=ok;s.onerror=()=>ko(new Error("No se pudo cargar "+u+". Verifique la conexión."));document.head.appendChild(s)})}
+async function pdfLibs(){
+ if(!window.jspdf)await loadJs("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+ if(!window.jspdf.jsPDF.API.autoTable)await loadJs("https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js");
+}
+async function makePdf(kind){
+ const b1=$(kind=="w"?"#pdfw":"#pdfm");
+ try{
+  const sel=kind=="w"?PDF.w:PDF.m,rg=kind=="w"?weekRange(sel):monthRange(sel),a=rg[0],b=rg[1];
+  const L=all.filter(d=>d.date>=a&&d.date<=b).sort((x,y)=>x.date<y.date?-1:x.date>y.date?1:(x.type<y.type?-1:1));
+  if(!L.length)return pdfMsg("No hay reportes enviados entre "+fmtD(a)+" y "+fmtD(b)+".","err");
+  b1.disabled=true;pdfMsg("Generando PDF…","good");
+  await pdfLibs();
+  const doc=new window.jspdf.jsPDF({unit:"mm",format:"a4"});
+  const W=210,M=12,CW=W-2*M,PR=[29,63,143],YE=[246,213,74],GR=[106,115,133],TX=[27,34,48],LB=[232,238,251],BD=[213,217,226];
+  const tipo=kind=="w"?"Reporte semanal":"Reporte mensual";
+  const pv=sel.split("-"),per=kind=="w"?fmtD(a)+" - "+fmtD(b):MES[+pv[1]-1]+" de "+pv[0];
+  /* --- datos --- */
+  const cnt={},secC={},secR={},byDay={};COLS.forEach(c=>cnt[c]=0);
+  let total=0,conNov=0;
+  L.forEach(d=>{const t=d.total||0;total+=t;if(t)conNov++;byDay[d.date]=(byDay[d.date]||0)+t;
+   d.nov.forEach(n=>{if(!n.c.length)return;(secR[n.s]=secR[n.s]||new Set()).add(d.type+"|"+n.r);n.c.forEach(c=>{cnt[c]=(cnt[c]||0)+1;secC[n.s]=(secC[n.s]||0)+1})})});
+  const nDias=new Set(L.map(d=>d.date)).size;
+  /* --- ayudas de dibujo --- */
+  const fc=c=>doc.setFillColor(c[0],c[1],c[2]),tc=c=>doc.setTextColor(c[0],c[1],c[2]),dc=c=>doc.setDrawColor(c[0],c[1],c[2]);
+  const txt=(t,x,y,sz,bold,col,al)=>{doc.setFont("helvetica",bold?"bold":"normal");doc.setFontSize(sz);tc(col);doc.text(String(t),x,y,al?{align:al}:undefined)};
+  const pill=(t,x,y,w)=>{fc(PR);doc.roundedRect(x,y,w,6.5,3.25,3.25,"F");txt(t,x+w/2,y+4.5,9,true,[255,255,255],"center")};
+  const arc=(cx,cy,r,a0,a1)=>{const o=[],n=Math.max(2,Math.ceil(Math.abs(a1-a0)/4));for(let i=0;i<=n;i++){const t=(a0+(a1-a0)*i/n)*Math.PI/180;o.push([cx+r*Math.cos(t),cy+r*Math.sin(t)])}return o};
+  const poly=(p,s)=>doc.lines(p.slice(1).map((q,i)=>[q[0]-p[i][0],q[1]-p[i][1]]),p[0][0],p[0][1],[1,1],s,true);
+  const need=(y,h)=>{if(y+h>278){doc.addPage();return 18}return y};
+  const tblBase={margin:{top:16,left:M,right:M,bottom:14},theme:"grid",styles:{font:"helvetica",fontSize:8,cellPadding:1.6,textColor:TX,lineColor:BD,lineWidth:.1,valign:"middle"},headStyles:{fillColor:PR,textColor:[255,255,255],fontStyle:"bold",halign:"center"},alternateRowStyles:{fillColor:[245,247,252]}};
+  /* --- encabezado --- */
+  txt("AIS",M,22,30,true,PR);
+  fc(PR);doc.roundedRect(M,25,34,5,2.5,2.5,"F");txt("CONTROL DE NOVEDADES",M+17,28.5,5.5,true,[255,255,255],"center");
+  txt(tipo,M+46,19,14,true,PR);
+  txt("Consolidado de los reportes diarios de novedades",M+46,25,8,false,GR);
+  const bx=W-M-70;fc(LB);dc(BD);doc.setLineWidth(.3);doc.roundedRect(bx,9,70,25,3,3,"FD");
+  txt("PERIODO",bx+4,15,7,true,GR);txt(per,bx+4,21.5,11,true,PR);
+  doc.setLineWidth(.2);doc.line(bx+4,24,bx+66,24);
+  txt("Generado: "+new Date().toLocaleString("es-CO"),bx+4,29.5,7.5,false,TX);
+  fc(YE);doc.roundedRect(M,38,CW,6.5,2,2,"F");
+  txt(L.length+" reporte(s) incluido(s) - del "+fmtD(a)+" al "+fmtD(b),W/2,42.4,9,true,[34,34,34],"center");
+  /* --- resumen: dona + KPIs --- */
+  pill("Resumen del período",M,48,CW);
+  const PAL=[[29,63,143],[246,213,74],[72,160,220],[60,160,110],[230,126,34],[192,57,43],[142,68,173],[120,130,150]];
+  const cx=M+32,cy=90,R=30,r=19;
+  if(total>0){let a0=-90;COLS.forEach((c,i)=>{if(!cnt[c])return;const a1=a0+cnt[c]/total*360;fc(PAL[i]);doc.setDrawColor(255,255,255);doc.setLineWidth(.5);poly(arc(cx,cy,R,a0,a1).concat(arc(cx,cy,r,a1,a0)),"FD");a0=a1})}
+  else{fc([225,228,235]);doc.circle(cx,cy,R,"F")}
+  fc([150,153,160]);doc.circle(cx,cy,r-.3,"F");
+  txt("TOTAL",cx,cy-6,9,false,[255,255,255],"center");txt("NOVEDADES",cx,cy-1.8,9,false,[255,255,255],"center");
+  fc([255,255,255]);doc.roundedRect(cx-11,cy+2.5,22,7,3.5,3.5,"F");txt(total,cx,cy+7.5,11,true,TX,"center");
+  COLS.forEach((c,i)=>{const y=64+i*6.5;fc(PAL[i]);doc.roundedRect(M+66,y-2.6,3.5,3.5,.8,.8,"F");txt(c,M+71.5,y,8,false,TX);txt(cnt[c],M+105,y,8,true,PR,"right")});
+  const K=[[L.length,"Reportes enviados"],[total,"Novedades marcadas"],[conNov,"Reportes con novedad"],[nDias,"Días con reporte"]];
+  K.forEach((k,i)=>{const x=M+112+(i%2)*38,y=62+Math.floor(i/2)*28;dc(PR);doc.setLineWidth(.4);fc([255,255,255]);doc.roundedRect(x,y,35,24,3,3,"FD");
+   txt(k[0],x+17.5,y+11,17,true,PR,"center");doc.setFont("helvetica","normal");doc.setFontSize(7.5);tc(GR);doc.text(doc.splitTextToSize(k[1],31),x+17.5,y+16.5,{align:"center"})});
+  /* --- barras por día --- */
+  pill(kind=="w"?"Novedades por día de la semana":"Novedades por día del mes",M,126,CW);
+  const days=[];{const dt=parseD(a);while(isoD(dt)<=b){days.push(isoD(dt));dt.setDate(dt.getDate()+1)}}
+  const mx=Math.max(1,...days.map(x=>byDay[x]||0)),bw=Math.min(12,CW/days.length*.6),slot=CW/days.length,base=166;
+  dc(BD);doc.setLineWidth(.3);doc.line(M,base,W-M,base);
+  days.forEach((dd,i)=>{const v=byDay[dd]||0,h=v?Math.max(1,v/mx*24):.6,x=M+i*slot+(slot-bw)/2;
+   if(v){fc(PR);doc.roundedRect(x,base-h,bw,h,Math.min(1,bw/3),Math.min(1,bw/3),"F")}else{fc([200,205,215]);doc.rect(x,base-h,bw,h,"F")}
+   if(v)txt(v,x+bw/2,base-h-1.2,days.length>16?6:8,true,PR,"center");
+   const p=parseD(dd);txt(kind=="w"?WD[p.getDay()]+" "+dd.slice(8):dd.slice(8),x+bw/2,base+4,days.length>16?6:8,false,GR,"center")});
+  /* --- por sección --- */
+  pill("Novedades por sección",M,178,CW);
+  const secRows=Object.keys(secC).sort((x,y)=>secC[y]-secC[x]).map(k=>[k,secC[k],secR[k].size]);
+  if(secRows.length)doc.autoTable(Object.assign({},tblBase,{startY:187,head:[["Sección","Novedades","Aulas con novedad"]],body:secRows,columnStyles:{0:{cellWidth:120},1:{halign:"center"},2:{halign:"center"}}}));
+  else{txt("Sin novedades marcadas en el período.",M,193,9,false,GR);doc.lastAutoTable={finalY:195}}
+  /* --- reportes del período con firmas --- */
+  let y=need(doc.lastAutoTable.finalY+8,40);
+  pill("Reportes del período y firmas",M,y,CW);
+  doc.autoTable(Object.assign({},tblBase,{startY:y+9,
+   head:[["Fecha","Reporte","Guarda","Firma","Supervisor","Firma","Novedades"]],
+   body:L.map(d=>[fmtD(d.date),d.type=="r1"?"Reporte 1":"Reporte 2",d.guard,"",d.sup,"",d.total?d.total+" novedad(es)":"Sin novedad"]),
+   bodyStyles:{minCellHeight:12},
+   columnStyles:{0:{cellWidth:20,halign:"center"},1:{cellWidth:18,halign:"center"},3:{cellWidth:26},5:{cellWidth:26},6:{cellWidth:24,halign:"center"}},
+   didDrawCell:h=>{if(h.section!="body"||(h.column.index!=3&&h.column.index!=5))return;
+    const im=L[h.row.index][h.column.index==3?"gs":"ss"];if(!im)return;
+    try{const pr=doc.getImageProperties(im),k=Math.min((h.cell.width-2)/pr.width,(h.cell.height-2)/pr.height),w=pr.width*k,hh=pr.height*k;
+     doc.addImage(im,"PNG",h.cell.x+(h.cell.width-w)/2,h.cell.y+(h.cell.height-hh)/2,w,hh)}catch(e){}}}));
+  /* --- detalle --- */
+  y=need(doc.lastAutoTable.finalY+8,40);
+  pill("Detalle de novedades",M,y,CW);
+  const det=[];L.forEach(d=>d.nov.forEach(n=>{if(n.c.length)det.push([fmtD(d.date),d.type=="r1"?"Reporte 1":"Reporte 2",n.s,n.r,n.c.join(", ")])}));
+  if(det.length)doc.autoTable(Object.assign({},tblBase,{startY:y+9,head:[["Fecha","Reporte","Sección","Aula / espacio","Novedades"]],body:det,
+   columnStyles:{0:{cellWidth:20,halign:"center"},1:{cellWidth:18,halign:"center"},2:{cellWidth:50},3:{cellWidth:42}}}));
+  else{txt("Sin novedades marcadas en el período.",M,y+15,9,false,GR);doc.lastAutoTable={finalY:y+17}}
+  /* --- observaciones --- */
+  const ob=L.filter(d=>d.obs).map(d=>[fmtD(d.date),d.type=="r1"?"Reporte 1":"Reporte 2",d.obs]);
+  if(ob.length){y=need(doc.lastAutoTable.finalY+8,30);pill("Observaciones generales",M,y,CW);
+   doc.autoTable(Object.assign({},tblBase,{startY:y+9,head:[["Fecha","Reporte","Observación"]],body:ob,columnStyles:{0:{cellWidth:20,halign:"center"},1:{cellWidth:18,halign:"center"}}}))}
+  /* --- pie y encabezado de páginas --- */
+  const N=doc.getNumberOfPages();
+  for(let i=1;i<=N;i++){doc.setPage(i);dc(PR);doc.setLineWidth(.4);doc.line(M,287,W-M,287);
+   txt("AIS - "+tipo+" - "+per,M,291.5,7.5,false,GR);txt("Página "+i+" de "+N,W-M,291.5,7.5,false,GR,"right");
+   if(i>1){txt("AIS · "+tipo,M,10,8,true,PR);txt(per,W-M,10,8,false,GR,"right");dc(BD);doc.setLineWidth(.2);doc.line(M,12,W-M,12)}}
+  doc.save("reporte-"+(kind=="w"?"semanal-"+a+"_a_"+b:"mensual-"+sel)+".pdf");
+  pdfMsg("✔ PDF generado ("+L.length+" reportes, "+total+" novedades).","good");
+ }catch(err){pdfMsg("No se pudo generar el PDF: "+esc(err.message||err),"err")}
+ finally{if(b1)b1.disabled=false}
+}
+
+/* ===== Autoguardado: todo lo escrito queda en el dispositivo y se restaura al volver ===== */
+let READY=false,VIEW="r1",SCR=0;
+function saveDraft(){
+ if(!READY)return;
+ safe(()=>{
+  const o={view:VIEW,y:Math.round(window.scrollY||0)};
+  ["r1","r2"].forEach(id=>{const x=st[id];o[id]={marks:[...x.marks],date:x.date,guard:x.guard,sup:x.sup,obs:x.obs,gs:x.gs,ss:x.ss,gt:x.gt,photos:x.photos}});
+  try{localStorage.setItem("draft",JSON.stringify(o))}catch(err){const e=$("#cnt");if(e)e.textContent="⚠ Almacenamiento lleno: el borrador no se está guardando. Quite algunas fotos."}
+ });
+}
+function restoreDraft(){
+ safe(()=>{
+  const o=JSON.parse(localStorage.getItem("draft")||"null");if(!o)return;
+  ["r1","r2"].forEach(id=>{const d=o[id];if(!d)return;
+   st[id]={marks:new Set(d.marks||[]),date:d.date||today(),guard:d.guard||"",sup:d.sup||"",obs:d.obs||"",gs:d.gs||null,ss:d.ss||null,gt:d.gt||null,photos:normPh(d.photos)}});
+  if(o.view=="r1"||o.view=="r2"||o.view=="dash")VIEW=o.view;
+  if(VIEW!="dash")cur=VIEW;
+  SCR=o.y||0;
+ });
+}
+safe(()=>applyLayout(JSON.parse(localStorage.getItem("lay"))));
+restoreDraft();
+document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.v==VIEW));
+if(VIEW=="dash"){$("#form").classList.add("hide");$("#dash").classList.remove("hide")}
+let _t;
+const later=()=>{clearTimeout(_t);_t=setTimeout(saveDraft,300)};
+document.addEventListener("input",()=>{saveDraft()});
+document.addEventListener("change",()=>{saveDraft()});
+document.addEventListener("click",e=>{
+ const t=e.target;
+ if(t.dataset&&t.dataset.v)VIEW=t.dataset.v;
+ if((t.classList&&t.classList.contains("c"))||(t.dataset&&(t.dataset.v||t.dataset.clr)))saveDraft();
+});
+document.addEventListener("pointerup",()=>{setTimeout(saveDraft,0)});
+window.addEventListener("scroll",later,{passive:true});
+window.addEventListener("pagehide",saveDraft);
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState=="hidden")saveDraft()});
+/* Evita que deslizar hacia abajo (estando arriba) refresque la página */
+let _ty=0;
+document.addEventListener("touchstart",e=>{_ty=e.touches[0].clientY},{passive:true});
+document.addEventListener("touchmove",e=>{if((window.scrollY||0)<=0&&e.touches[0].clientY>_ty&&e.cancelable)e.preventDefault()},{passive:false});
+
+renderForm();
+if(VIEW=="dash")renderDash();
+READY=true;
+const _go=()=>window.scrollTo(0,SCR);_go();setTimeout(_go,150);setTimeout(_go,600);
+</script><script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js";
+import {getAuth,signInAnonymously,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
+import {getFirestore,doc,setDoc,getDoc,writeBatch,collection,query,orderBy,limit,onSnapshot} from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+// ====== PEGUE AQUÍ SU CONFIGURACIÓN DE FIREBASE (Configuración del proyecto → Tus apps → Web) ======
+const firebaseConfig={apiKey:"AIzaSyBBzKShRsFtf65AXnMWOJlVl0hCAzcAyGY",authDomain:"formato-de-reporte-diario.firebaseapp.com",projectId:"formato-de-reporte-diario",storageBucket:"formato-de-reporte-diario.firebasestorage.app",messagingSenderId:"462001738427",appId:"1:462001738427:web:47010f745d50c40d324f9e"};
+const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);let unsub=null,lunsub=null;
+window.FB={
+ add:(id,d,ph)=>{
+  if(!ph||!ph.length)return setDoc(doc(db,"reportes",id),d);
+  const b=writeBatch(db);b.set(doc(db,"reportes",id),d);
+  ph.forEach(p=>b.set(doc(db,"evidencias",p.id),{r:id,d:p.d,createdAt:Date.now(),by:UID}));
+  return b.commit()},
+ photo:async id=>{const x=await getDoc(doc(db,"evidencias",id));if(!x.exists())throw new Error("sin foto");return x.data().d},
+ login:(e,p)=>signInWithEmailAndPassword(auth,e,p),
+ logout:async()=>{await signOut(auth)},
+ saveLayout:o=>setDoc(doc(db,"config","layout"),{data:JSON.stringify(o),updatedAt:Date.now(),by:UID})
+};
+onAuthStateChanged(auth,u=>{
+ if(unsub){unsub();unsub=null}
+ if(!u){signInAnonymously(auth).catch(()=>{});setAll([],false);return}
+ UID=u.uid;
+ if(!lunsub)lunsub=onSnapshot(doc(db,"config","layout"),s=>{if(!s.exists())return;try{const raw=s.data().data;applyLayout(JSON.parse(raw));safe(()=>localStorage.setItem("lay",raw))}catch(e){}},()=>{lunsub=null});
+ if(u.isAnonymous){setAll([],false);flush();return}
+ flush();
+ unsub=onSnapshot(query(collection(db,"reportes"),orderBy("createdAt","desc"),limit(300)),s=>setAll(s.docs.map(d=>d.data()),true),()=>setAll([],false));
+});
+</script>
+</body></html>
