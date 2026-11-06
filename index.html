@@ -361,8 +361,9 @@ async function makePdf(kind){
   const bl=["DEPARTAMENTO DE CONTROL INTERNO","DE SEGURIDAD E INFRAESTRUCTURA"];doc.setFont("helvetica","bold");doc.setFontSize(5.5);
   const pw=Math.max(...bl.map(t=>doc.getTextWidth(t)))+8,tx=M+pw+6;
   fc(PR);doc.roundedRect(M,25,pw,9,3,3,"F");bl.forEach((t,i)=>txt(t,M+pw/2,28.6+i*3.4,5.5,true,[255,255,255],"center"));
-  txt(tipo,tx,19,14,true,PR);
-  doc.setFont("helvetica","normal");doc.setFontSize(8);doc.splitTextToSize("REPORTE DE NOVEDADES DE INFRAESTRUCTURA",bx-tx-4).forEach((ln,i)=>txt(ln,tx,25+i*4,8,true,[0,0,0]));
+  const tx2=tx+6;doc.setFont("helvetica","bold");doc.setFontSize(14);const tw=doc.getTextWidth(tipo),tcx=tx2+tw/2;
+  txt(tipo,tx2,19,14,true,PR);
+  doc.setFont("helvetica","bold");doc.setFontSize(8);doc.splitTextToSize("REPORTE DE NOVEDADES DE INFRAESTRUCTURA",Math.min(bx-tx2-4,tw)).forEach((ln,i)=>txt(ln,tcx,25+i*4,8,true,[0,0,0],"center"));
   fc(LB);dc(BD);doc.setLineWidth(.3);doc.roundedRect(bx,9,70,25,3,3,"FD");
   txt("PERIODO",bx+4,15,7,true,GR);txt(per,bx+4,21.5,11,true,PR);
   doc.setLineWidth(.2);doc.line(bx+4,24,bx+66,24);
