@@ -17,12 +17,12 @@ main{max-width:1000px;margin:0 auto;padding:12px}
 .card{background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:12px;margin-bottom:14px}
 .sec{background:var(--ye);color:#fff;font-weight:700;text-align:center;padding:6px;border-radius:6px;margin:16px 0 6px}
 .wrap{overflow-x:auto;border:1px solid var(--bd);border-radius:8px;max-width:100%}
-table{border-collapse:collapse;width:100%;min-width:640px;font-size:13px}
+table{border-collapse:collapse;width:100%;min-width:0;font-size:13px}
 th,td{border:1px solid var(--bd);padding:0;text-align:center}
-th{background:var(--bg);padding:4px;font-size:12px}
-td.n{text-align:left;padding:4px 6px;position:sticky;left:0;background:var(--sf);min-width:150px;z-index:1}
+th{background:var(--bg);padding:4px 2px;font-size:11px}
+td.n{text-align:left;padding:4px 5px;position:sticky;left:0;background:var(--sf);min-width:96px;font-size:12px;line-height:1.2;z-index:1}
 td.n small{color:var(--mu)}
-td.c{width:52px;height:38px;cursor:pointer;user-select:none;color:var(--mu)}
+td.c{width:44px;height:40px;cursor:pointer;user-select:none;color:var(--mu)}
 td.c.x{background:var(--rb);color:var(--rd);font-weight:700}
 input,textarea,select{font:inherit;color:var(--tx);background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:8px;width:100%}
 .g{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
@@ -36,10 +36,14 @@ canvas{width:100%;height:120px;border:1px dashed var(--mu);border-radius:8px;bac
 details{border-top:1px solid var(--bd);padding:8px 0}summary{cursor:pointer}
 .sig{max-width:260px;background:#fff;border:1px solid var(--bd);border-radius:6px}
 .hide{display:none}
-td.p{width:96px;min-width:96px;cursor:pointer;font-size:18px;user-select:none;white-space:nowrap}
-td.p img{display:inline-block;vertical-align:middle;width:40px;height:34px;object-fit:cover;margin:2px;border-radius:4px}
+td.p{width:76px;min-width:76px;cursor:pointer;font-size:15px;user-select:none;white-space:nowrap}
+td.p img{display:inline-block;vertical-align:middle;width:30px;height:30px;object-fit:cover;margin:2px;border-radius:4px}
 #pv{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:12px}
 #pv img{max-width:100%;max-height:70vh;border-radius:8px}
+.sigbox{border:1px dashed var(--mu);border-radius:8px;background:#fff;min-height:90px;display:flex;align-items:center;justify-content:center;margin:0 0 8px}
+.sigbox .sig{border:0;max-width:100%;max-height:110px;border-radius:0}
+#sg{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:12px;color:#fff}
+#sg canvas{width:min(94vw,640px);height:min(46vh,300px);border:2px solid #fff;border-radius:8px;background:#fff;touch-action:none}
 </style></head><body>
 <header><h1>AIS · REPORTE DIARIO DE NOVEDADES</h1>
 <nav><button data-v="r1" class="on">REPORTE 1</button><button data-v="r2">REPORTE 2</button><button data-v="dash">DASHBOARD</button></nav></header>
@@ -50,7 +54,8 @@ td.p img{display:inline-block;vertical-align:middle;width:40px;height:34px;objec
 <input type="file" accept="image/*" capture="environment" id="pf" class="hide">
 <script>
 const COLS=["PUERTA ABIERTA","PUERTA CERRADA","CERRADURA B/E","CERRADURA M/E","AIRE ON","AIRE OFF","LUCES ON","LUCES OFF"];
-const HD=[["Puertas",["Abierta","Cerrada"]],["Cerradura",["B/E","M/E"]],["Aire acond.",["ON","OFF"]],["Luces",["ON","OFF"]]];
+const HD=[["Puertas",["Abierta"]],["Cerradura",["M/E"]],["Aire acond.",["ON"]],["Luces",["ON"]]];
+const SHOW=[0,3,4,6];
 const S=(k,t,r)=>({k,t,r:r.split("|")});
 const R={
 r1:{n:"Reporte 1 · CENTRO DE INNOVACIÓN, EDIFICIO ADMINISTRATIVO y CAFETORIUM",secs:[
@@ -80,29 +85,38 @@ function renderForm(){
  let h=`<div class="card"><b>${esc(def.n)}</b><div class="g" style="margin-top:10px"><div><label>Fecha (día/mes/año)</label><input type="date" id="fd" value="${s.date}"></div></div>
  <p class="mu">Toque una casilla para marcar <b>SÍ</b> (novedad). Las casillas con raya “—” = sin novedad.</p></div>`;
  def.secs.forEach(sec=>{
-  h+=`<div class="sec">${esc(sec.t)}</div><div class="wrap"><table><thead><tr><th rowspan="2">No. / Aula</th><th rowspan="2">Foto</th>${HD.map(x=>`<th colspan="2">${x[0]}</th>`).join("")}</tr><tr>${HD.map(x=>x[1].map(y=>`<th>${y}</th>`).join("")).join("")}</tr></thead><tbody>`;
+  h+=`<div class="sec">${esc(sec.t)}</div><div class="wrap"><table><thead><tr><th rowspan="2">No. / Aula</th><th rowspan="2">Foto</th>${HD.map(x=>`<th colspan="${x[1].length}">${x[0]}</th>`).join("")}</tr><tr>${HD.map(x=>x[1].map(y=>`<th>${y}</th>`).join("")).join("")}</tr></thead><tbody>`;
   sec.r.forEach((nm,i)=>{h+=`<tr><td class="n"><small>${String(i+1).padStart(2,"0")}</small> ${esc(nm)}</td>`;{const pk=sec.k+"|"+i;h+=`<td class="p" data-p="${pk}">${cellHtml(s.photos[pk])}</td>`}
-   for(let c=0;c<8;c++){const x=s.marks.has(sec.k+"|"+i+"|"+c);h+=`<td class="c${x?" x":""}" data-k="${sec.k}|${i}|${c}">${x?"SÍ":"—"}</td>`}
+   for(const c of SHOW){const x=s.marks.has(sec.k+"|"+i+"|"+c);h+=`<td class="c${x?" x":""}" data-k="${sec.k}|${i}|${c}">${x?"SÍ":"—"}</td>`}
    h+="</tr>"});
   h+="</tbody></table></div>"});
  h+=`<div class="card" style="margin-top:14px"><label>Observaciones generales (opcional)</label><textarea id="ob" rows="3">${esc(s.obs)}</textarea></div>
  <div class="card"><div class="g">
- <div><label>Guarda de turno – NOMBRES Y APELLIDOS</label><input id="gn" value="${esc(s.guard)}"><label style="margin-top:8px">Firma</label><canvas id="gc"></canvas><button class="btn" data-clr="gc">Borrar firma</button></div>
- <div><label>Supervisor de turno – NOMBRES Y APELLIDOS</label><input id="sn" value="${esc(s.sup)}"><label style="margin-top:8px">Firma</label><canvas id="sc"></canvas><button class="btn" data-clr="sc">Borrar firma</button></div></div>
+ <div><label>Guarda de turno – NOMBRES Y APELLIDOS</label><input id="gn" value="${esc(s.guard)}"><label style="margin-top:8px">Firma</label><div class="sigbox" id="gb">${sigHtml(s.gs)}</div><button class="btn" id="gbt" data-sig="gc">${s.gs?"Cambiar firma":"Firmar"}</button></div>
+ <div><label>Supervisor de turno – NOMBRES Y APELLIDOS</label><input id="sn" value="${esc(s.sup)}"><label style="margin-top:8px">Firma</label><div class="sigbox" id="sb">${sigHtml(s.ss)}</div><button class="btn" id="sbt" data-sig="sc">${s.ss?"Cambiar firma":"Firmar"}</button></div></div>
  <div id="fm"></div><div class="row" style="margin-top:12px"><button class="btn pr" id="send">Finalizar y enviar reporte</button><span class="mu" id="cnt"></span></div></div>`;
  $("#form").innerHTML=h;
  pad(0);cnt();
- ["gc","sc"].forEach(i=>sigInit(i,i=="gc"?s.gs:s.ss));
 }
-function cnt(){const e=$("#cnt");if(e){const n=nph(st[cur]);e.textContent=st[cur].marks.size+" novedad(es) marcada(s)"+(n?" · "+n+" foto(s)":"")}}
-function sigInit(id,img){
- const c=document.getElementById(id),r=c.getBoundingClientRect(),dpr=window.devicePixelRatio||1;
- c.width=r.width*dpr;c.height=r.height*dpr;const x=c.getContext("2d");x.scale(dpr,dpr);x.lineWidth=2;x.lineCap="round";x.strokeStyle="#111";
+function cnt(){const e=$("#cnt");if(e){const n=nph(st[cur]);e.textContent=[...st[cur].marks].filter(m=>SHOW.includes(+m.split("|").pop())).length+" novedad(es) marcada(s)"+(n?" · "+n+" foto(s)":"")}}
+const sigHtml=img=>img?`<img class="sig" src="${img}">`:'<span class="mu">Sin firma</span>';
+function sigRefresh(id){const g=id=="gc",img=st[cur][g?"gs":"ss"];$(g?"#gb":"#sb").innerHTML=sigHtml(img);$(g?"#gbt":"#sbt").textContent=img?"Cambiar firma":"Firmar"}
+function sigOpen(id){
+ const old=$("#sg");if(old)old.remove();
+ const g=id=="gc",key=g?"gs":"ss",img=st[cur][key];
+ const d=document.createElement("div");d.id="sg";
+ d.innerHTML='<b>Firma del '+(g?"guarda":"supervisor")+'</b><canvas id="sgc"></canvas><div class="row" style="justify-content:center"><button class="btn" id="sgb">Borrar</button><button class="btn pr" id="sgx">Cerrar</button></div>';
+ document.body.appendChild(d);
+ const c=$("#sgc"),r=c.getBoundingClientRect(),dpr=window.devicePixelRatio||1;
+ c.width=r.width*dpr;c.height=r.height*dpr;const x=c.getContext("2d");x.scale(dpr,dpr);x.lineWidth=2.5;x.lineCap="round";x.lineJoin="round";x.strokeStyle="#111";
+ let has=!!img,dr=false,l;
  if(img){const im=new Image();im.onload=()=>x.drawImage(im,0,0,r.width,r.height);im.src=img}
- let d=false,l;const p=e=>{const b=c.getBoundingClientRect();return[e.clientX-b.left,e.clientY-b.top]};
- c.onpointerdown=e=>{d=true;l=p(e);c.setPointerCapture(e.pointerId)};
- c.onpointermove=e=>{if(!d)return;const q=p(e);x.beginPath();x.moveTo(...l);x.lineTo(...q);x.stroke();l=q};
- c.onpointerup=()=>{d=false;st[cur][id=="gc"?"gs":"ss"]=c.toDataURL("image/png");if(id=="gc")st[cur].gt=Date.now()};
+ const p=e=>{const b=c.getBoundingClientRect();return[e.clientX-b.left,e.clientY-b.top]};
+ c.onpointerdown=e=>{dr=true;has=true;l=p(e);c.setPointerCapture(e.pointerId);x.beginPath();x.moveTo(...l);x.lineTo(l[0]+.1,l[1]+.1);x.stroke()};
+ c.onpointermove=e=>{if(!dr)return;const q=p(e);x.beginPath();x.moveTo(...l);x.lineTo(...q);x.stroke();l=q};
+ c.onpointerup=c.onpointercancel=()=>{dr=false};
+ $("#sgb").onclick=()=>{x.clearRect(0,0,r.width,r.height);has=false};
+ $("#sgx").onclick=()=>{st[cur][key]=has?c.toDataURL("image/png"):null;if(g)st[cur].gt=has?Date.now():null;d.remove();sigRefresh(id);saveDraft()};
 }
 document.addEventListener("click",e=>{
  const t=e.target;
@@ -110,7 +124,7 @@ document.addEventListener("click",e=>{
   if(t.dataset.v=="dash"){$("#form").classList.add("hide");$("#dash").classList.remove("hide");renderDash()}
   else{cur=t.dataset.v;$("#dash").classList.add("hide");$("#form").classList.remove("hide");renderForm()}return}
  if(t.classList.contains("c")){const k=t.dataset.k,s=st[cur].marks;s.has(k)?s.delete(k):s.add(k);t.classList.toggle("x");t.textContent=s.has(k)?"SÍ":"—";cnt();return}
- if(t.dataset.clr){const c=document.getElementById(t.dataset.clr);c.getContext("2d").clearRect(0,0,c.width,c.height);st[cur][t.dataset.clr=="gc"?"gs":"ss"]=null;if(t.dataset.clr=="gc")st[cur].gt=null;return}
+ if(t.dataset.sig){sigOpen(t.dataset.sig);return}
  if(t.id=="send")send();
  if(t.id=="li")FB.login($("#le").value,$("#lp").value).catch(()=>{$("#lm").innerHTML='<div class="msg err">Correo o contraseña incorrectos.</div>'});
 });
@@ -121,7 +135,7 @@ async function send(){
  if(!s.date||!s.guard.trim()||!s.sup.trim())return msg("Complete la fecha y el nombre del guarda y del supervisor.","err");
  if(!s.gs||!s.ss)return msg("Faltan las firmas del guarda y/o del supervisor.","err");
  const rid=cur+"-"+s.date.replace(/-/g,"")+"-"+Date.now(),ph=[],nov=[];
- def.secs.forEach(sec=>sec.r.forEach((nm,i)=>{const cs=[],ims=s.photos[sec.k+"|"+i]||[];for(let c=0;c<8;c++)if(s.marks.has(sec.k+"|"+i+"|"+c))cs.push(COLS[c]);
+ def.secs.forEach(sec=>sec.r.forEach((nm,i)=>{const cs=[],ims=s.photos[sec.k+"|"+i]||[];for(const c of SHOW)if(s.marks.has(sec.k+"|"+i+"|"+c))cs.push(COLS[c]);
   if(cs.length||ims.length){const e={s:sec.t,r:String(i+1).padStart(2,"0")+" "+nm,c:cs};if(ims.length)e.fs=ims.map(d=>{const pid=rid+"_"+ph.length;ph.push({id:pid,d});return pid});nov.push(e)}}));
  const rooms=def.secs.reduce((a,x)=>a+x.r.length,0);
  const doc={type:cur,title:def.n,date:s.date,signedAt:s.gt||Date.now(),guard:s.guard.trim(),sup:s.sup.trim(),gs:s.gs,ss:s.ss,obs:s.obs.trim(),nov,rooms,total:nov.reduce((a,x)=>a+x.c.length,0),createdAt:Date.now(),by:UID};
