@@ -320,9 +320,18 @@ async function makePdf(kind){
   const pv=sel.split("-"),per=kind=="w"?fmtD(a)+" - "+fmtD(b):MES[+pv[1]-1]+" de "+pv[0];
   /* --- datos --- */
   const cnt={},secC={},secR={},byDay={};COLS.forEach(c=>cnt[c]=0);
+  const REL=["PUERTA ABIERTA","CERRADURA M/E","AIRE ON","LUCES ON"];
+  const nk=c=>String(c).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().replace(/[^A-Z0-9\/ ]/g," ").replace(/\s+/g," ").trim();
+  const canon=c=>{const k=nk(c),on=/(^| )ON( |$)|ENCENDID|PRENDID/.test(k);
+   if(/ABIERT/.test(k))return "PUERTA ABIERTA";
+   if(/(^| )M ?\/ ?E( |$)|MAL ?ESTADO|MALO/.test(k))return "CERRADURA M/E";
+   if(/AIRE|ACOND/.test(k)&&on)return "AIRE ON";
+   if(/LUCES|LUZ|ILUMIN/.test(k)&&on)return "LUCES ON";
+   return null};
+  const cats=n=>n.c.map(canon).filter(Boolean);
   let total=0,conNov=0;
-  L.forEach(d=>{const t=d.total||0;total+=t;if(t)conNov++;byDay[d.date]=(byDay[d.date]||0)+t;
-   d.nov.forEach(n=>{if(!n.c.length)return;(secR[fz(n.s)]=secR[fz(n.s)]||new Set()).add(d.type+"|"+n.r);n.c.forEach(c=>{cnt[c]=(cnt[c]||0)+1;secC[fz(n.s)]=(secC[fz(n.s)]||0)+1})})});
+  L.forEach(d=>{const t=d.nov.reduce((q,n)=>q+cats(n).length,0);d.rt=t;total+=t;if(t)conNov++;byDay[d.date]=(byDay[d.date]||0)+t;
+   d.nov.forEach(n=>{const cs=cats(n);if(!cs.length)return;(secR[fz(n.s)]=secR[fz(n.s)]||new Set()).add(d.type+"|"+n.r);cs.forEach(c=>{cnt[c]=(cnt[c]||0)+1;secC[fz(n.s)]=(secC[fz(n.s)]||0)+1})})});
   const nDias=new Set(L.map(d=>d.date)).size;
   /* --- ayudas de dibujo --- */
   const fc=c=>doc.setFillColor(c[0],c[1],c[2]),tc=c=>doc.setTextColor(c[0],c[1],c[2]),dc=c=>doc.setDrawColor(c[0],c[1],c[2]);
@@ -335,9 +344,11 @@ async function makePdf(kind){
   /* --- encabezado --- */
   const bx=W-M-70;
   txt("AIS",M,22,30,true,PR);
-  fc(PR);doc.roundedRect(M,25,42,9,3,3,"F");txt("DEPARTAMENTO DE SEGURIDAD",M+21,28.6,5.5,true,[255,255,255],"center");txt("E INFRAESTRUCTURA",M+21,32,5.5,true,[255,255,255],"center");
-  txt(tipo,M+50,19,14,true,PR);
-  doc.setFont("helvetica","normal");doc.setFontSize(8);doc.splitTextToSize("REPORTE DE NOVEDADES DE INFRAESTRUCTURA",bx-(M+50)-4).forEach((ln,i)=>txt(ln,M+50,25+i*4,8,false,GR));
+  const bl=["DEPARTAMENTO DE CONTROL INTERNO","DE SEGURIDAD E INFRAESTRUCTURA"];doc.setFont("helvetica","bold");doc.setFontSize(5.5);
+  const pw=Math.max(...bl.map(t=>doc.getTextWidth(t)))+8,tx=M+pw+6;
+  fc(PR);doc.roundedRect(M,25,pw,9,3,3,"F");bl.forEach((t,i)=>txt(t,M+pw/2,28.6+i*3.4,5.5,true,[255,255,255],"center"));
+  txt(tipo,tx,19,14,true,PR);
+  doc.setFont("helvetica","normal");doc.setFontSize(8);doc.splitTextToSize("REPORTE DE NOVEDADES DE INFRAESTRUCTURA",bx-tx-4).forEach((ln,i)=>txt(ln,tx,25+i*4,8,false,GR));
   fc(LB);dc(BD);doc.setLineWidth(.3);doc.roundedRect(bx,9,70,25,3,3,"FD");
   txt("PERIODO",bx+4,15,7,true,GR);txt(per,bx+4,21.5,11,true,PR);
   doc.setLineWidth(.2);doc.line(bx+4,24,bx+66,24);
@@ -348,7 +359,7 @@ async function makePdf(kind){
   pill("Resumen del período",M,48,CW);
   const PAL=[[37,84,159],[228,72,59],[28,51,102],[110,155,215],[60,160,110],[230,126,34],[142,68,173],[120,130,150]];
   const cx=M+32,cy=90,R=30,r=19;
-  const DONA=["PUERTA ABIERTA","CERRADURA M/E","AIRE ON","LUCES ON"],dTot=DONA.reduce((s,c)=>s+(cnt[c]||0),0);
+  const DONA=REL,dTot=total;
   if(dTot>0){let a0=-90;DONA.forEach((c,i)=>{if(!cnt[c])return;const a1=a0+cnt[c]/dTot*360;fc(PAL[i]);doc.setDrawColor(255,255,255);doc.setLineWidth(.5);poly(arc(cx,cy,R,a0,a1).concat(arc(cx,cy,r,a1,a0)),"FD");a0=a1})}
   else{fc([225,228,235]);doc.circle(cx,cy,R,"F")}
   fc([150,153,160]);doc.circle(cx,cy,r-.3,"F");
@@ -377,7 +388,7 @@ async function makePdf(kind){
   pill("Reportes del período y firmas",M,y,CW);
   doc.autoTable(Object.assign({},tblBase,{startY:y+9,
    head:[["Fecha","Reporte","Guarda","Firma","Supervisor","Firma","Novedades"]],
-   body:L.map(d=>[fmtD(d.date),d.type=="r1"?"Reporte 1":"Reporte 2",d.guard,"",d.sup,"",d.total?d.total+" novedad(es)":"Sin novedad"]),
+   body:L.map(d=>[fmtD(d.date),d.type=="r1"?"Reporte 1":"Reporte 2",d.guard,"",d.sup,"",d.rt?d.rt+" novedad(es)":"Sin novedad"]),
    bodyStyles:{minCellHeight:12},
    columnStyles:{0:{cellWidth:20,halign:"center"},1:{cellWidth:18,halign:"center"},3:{cellWidth:26},5:{cellWidth:26},6:{cellWidth:24,halign:"center"}},
    didDrawCell:h=>{if(h.section!="body"||(h.column.index!=3&&h.column.index!=5))return;
@@ -387,7 +398,7 @@ async function makePdf(kind){
   /* --- detalle --- */
   y=need(doc.lastAutoTable.finalY+8,40);
   pill("Detalle de novedades",M,y,CW);
-  const det=[];L.forEach(d=>d.nov.forEach(n=>{if(n.c.length)det.push([fmtD(d.date),d.type=="r1"?"Reporte 1":"Reporte 2",fz(n.s),n.r.replace(/^\d+\s+/,""),n.c.join(", ")])}));
+  const det=[];L.forEach(d=>d.nov.forEach(n=>{const cs=cats(n);if(cs.length)det.push([fmtD(d.date),d.type=="r1"?"Reporte 1":"Reporte 2",fz(n.s),n.r.replace(/^\d+\s+/,""),cs.join(", ")])}));
   if(det.length)doc.autoTable(Object.assign({},tblBase,{startY:y+9,head:[["Fecha","Reporte","Sección","Aula / espacio","Novedades"]],body:det,
    columnStyles:{0:{cellWidth:20,halign:"center"},1:{cellWidth:18,halign:"center"},2:{cellWidth:50},3:{cellWidth:42}}}));
   else{txt("Sin novedades marcadas en el período.",M,y+15,9,false,GR);doc.lastAutoTable={finalY:y+17}}
@@ -401,7 +412,8 @@ async function makePdf(kind){
    txt("AIS - "+tipo+" - "+per,M,291.5,7.5,false,GR);txt("Página "+i+" de "+N,W-M,291.5,7.5,false,GR,"right");
    if(i>1){txt("AIS · "+tipo,M,10,8,true,PR);txt(per,W-M,10,8,false,GR,"right");dc(BD);doc.setLineWidth(.2);doc.line(M,12,W-M,12)}}
   doc.save("reporte-"+(kind=="w"?"semanal-"+a+"_a_"+b:"mensual-"+sel)+".pdf");
-  pdfMsg("✔ PDF generado ("+L.length+" reportes, "+total+" novedades).","good");
+  {let ign=0;const unk=new Set();L.forEach(d=>d.nov.forEach(n=>n.c.forEach(c=>{if(!canon(c)){ign++;if(!COLS.includes(c))unk.add(c)}})));
+  pdfMsg("✔ PDF generado ("+L.length+" reportes, "+total+" novedades)."+(ign?" Marcas no contadas (otras categorías): "+ign+".":"")+(unk.size?" Textos no reconocidos: "+[...unk].map(esc).join(", ")+".":""),"good")}
  }catch(err){pdfMsg("No se pudo generar el PDF: "+esc(err.message||err),"err")}
  finally{if(b1)b1.disabled=false}
 }
