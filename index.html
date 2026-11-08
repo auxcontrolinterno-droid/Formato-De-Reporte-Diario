@@ -44,6 +44,29 @@ td.p img{display:inline-block;vertical-align:middle;width:30px;height:30px;objec
 .sigbox .sig{border:0;max-width:100%;max-height:110px;border-radius:0}
 #sg{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:12px;color:#fff}
 #sg canvas{width:min(94vw,640px);height:min(46vh,300px);border:2px solid #fff;border-radius:8px;background:#fff;touch-action:none}
+header{box-shadow:0 1px 6px rgba(20,30,60,.08)}h1{font-size:15px;letter-spacing:.3px}
+nav button{font-weight:600}
+.k div{border-top:4px solid var(--pr);box-shadow:0 1px 3px rgba(20,30,60,.06)}
+.k small{display:block;color:var(--mu);font-size:12px;margin-bottom:2px}.k em{font-style:normal;color:var(--mu);font-size:11px}
+.k .k2{border-top-color:var(--rd)}.k .k3{border-top-color:#e6a117}.k .k4{border-top-color:#1c9a5a}
+.ct{font-weight:700;margin-bottom:10px}
+.bars{display:flex;align-items:flex-end;gap:8px;height:130px;padding-top:6px}
+.bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0}
+.bar i{display:block;width:100%;max-width:40px;background:var(--pr);border-radius:6px 6px 0 0}
+.bar span{font-size:12px;font-weight:700;margin-bottom:2px}.bar em{font-style:normal;font-size:11px;color:var(--mu);margin-top:4px}
+.dh{display:flex;justify-content:space-between;align-items:baseline;margin:20px 2px 8px;padding-bottom:4px;border-bottom:2px solid var(--bd);text-transform:capitalize;font-weight:700}
+.dh small{text-transform:none;color:var(--mu);font-weight:400;font-size:12px}
+.rc{background:var(--sf);border:1px solid var(--bd);border-left:5px solid var(--rd);border-radius:10px;padding:12px;margin-bottom:12px;box-shadow:0 1px 3px rgba(20,30,60,.06)}
+.rc.sn{border-left-color:#1c9a5a}
+.rh{display:flex;gap:8px;align-items:flex-start;line-height:1.25}
+.tg{flex:none;color:#fff;font-size:11px;font-weight:700;border-radius:6px;padding:2px 7px;background:var(--pr)}.tg.t2{background:#0f8a6a}
+html[data-theme=dark] .tg{color:#111}
+.rb{margin:8px 0;display:flex;gap:6px;flex-wrap:wrap}
+.mg{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 12px;font-size:13px}
+.mg small{display:block;color:var(--mu);font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+.pill.wn{background:rgba(230,160,20,.18);color:#b87400}
+.nv{margin:8px 0;padding:8px;border-radius:8px;background:var(--bg)}
+details{margin-top:10px}summary{font-weight:600;color:var(--pr)}
 </style></head><body>
 <header><h1>AIS · REPORTE DIARIO DE NOVEDADES</h1>
 <nav><button data-v="r1" class="on">REPORTE 1</button><button data-v="r2">REPORTE 2</button><button data-v="dash">DASHBOARD</button></nav></header>
@@ -139,6 +162,8 @@ async function send(){
   if(cs.length||ims.length){const e={s:sec.t,r:String(i+1).padStart(2,"0")+" "+nm,c:cs};if(ims.length)e.fs=ims.map(d=>{const pid=rid+"_"+ph.length;ph.push({id:pid,d});return pid});nov.push(e)}}));
  const rooms=def.secs.reduce((a,x)=>a+x.r.length,0);
  const doc={type:cur,title:def.n,date:s.date,signedAt:s.gt||Date.now(),guard:s.guard.trim(),sup:s.sup.trim(),gs:s.gs,ss:s.ss,obs:s.obs.trim(),nov,rooms,total:nov.reduce((a,x)=>a+x.c.length,0),createdAt:Date.now(),by:UID};
+ const _sd=new Date(s.gt||Date.now()),_sdd=_sd.getFullYear()+"-"+String(_sd.getMonth()+1).padStart(2,"0")+"-"+String(_sd.getDate()).padStart(2,"0");
+ if(s.date!==_sdd&&!confirm("⚠ La fecha del reporte ("+s.date.split("-").reverse().join("/")+") NO coincide con el día de la firma ("+_sdd.split("-").reverse().join("/")+").\n\n¿Enviar así?"))return;
  if(!confirm("¿Finalizar y enviar el reporte? No podrá modificarse después."))return;
  $("#send").disabled=true;
  const id=rid;
@@ -161,19 +186,38 @@ async function flush(){
 function renderDash(){
  if(!AUTH){ED.on=false;$("#dash").innerHTML=`<div class="card"><b>Dashboard – acceso restringido</b><p class="mu">Ingrese con su correo y contraseña de supervisor/administrador.</p><div class="g"><div><label>Correo</label><input id="le" type="email"></div><div><label>Contraseña</label><input id="lp" type="password"></div></div><div class="row" style="margin-top:10px"><button class="btn pr" id="li">Ingresar</button></div><div id="lm"></div></div>`;return}
  const f=($("#fl")||{}).value||"",ft=($("#ft")||{}).value||"";
- let L=all.filter(d=>(!f||d.date==f)&&(!ft||d.type==ft));
- const nv=L.reduce((a,d)=>a+d.total,0),cn=L.filter(d=>d.total).length;
- let h=(ED.flash?'<div class="msg good">'+ED.flash+'</div>':"")+(ED.on?edHtml():"")+`<div class="k"><div><b>${L.length}</b>Reportes</div><div><b>${nv}</b>Novedades marcadas</div><div><b>${cn}</b>Reportes con novedad</div><div><b>${new Set(L.map(d=>d.date)).size}</b>Días</div></div>
- <div class="card"><div class="g"><div><label>Fecha</label><input type="date" id="fl" value="${f}"></div><div><label>Reporte</label><select id="ft"><option value="">Todos</option><option value="r1">Reporte 1</option><option value="r2">Reporte 2</option></select></div></div>
- <div class="row" style="margin-top:10px"><button class="btn" id="csv">Descargar CSV</button><button class="btn" data-ed="open">Editor de casillas</button><button class="btn" id="lo">Cerrar sesión</button><span class="mu">Datos guardados en Firebase (solo lectura, sin edición ni borrado).</span></div></div>`;
+ let L=all.filter(d=>(!f||d.date==f)&&(!ft||d.type==ft)).sort((x,y)=>x.date<y.date?1:x.date>y.date?-1:(y.createdAt||0)-(x.createdAt||0));
+ const tc=t=>String(t||"").toLowerCase().replace(/(^|\s)\S/g,m=>m.toUpperCase());
+ const fD=t=>String(t).split("-").reverse().join("/");
+ const dOf=ts=>{const x=new Date(ts);return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0")};
+ const nv=L.reduce((a,d)=>a+d.total,0),cn=L.filter(d=>d.total).length,nd=new Set(L.map(d=>d.date)).size;
+ const pc=L.length?Math.round(cn/L.length*100):0;
+ const by={};L.forEach(d=>by[d.date]=(by[d.date]||0)+d.total);
+ const ks=Object.keys(by).sort().slice(-7),mx=Math.max(1,...ks.map(k=>by[k]));
+ let h=(ED.flash?'<div class="msg good">'+ED.flash+'</div>':"")+(ED.on?edHtml():"")+`<div class="k">
+ <div class="k1"><small>Reportes</small><b>${L.length}</b></div>
+ <div class="k2"><small>Novedades marcadas</small><b>${nv}</b></div>
+ <div class="k3"><small>Reportes con novedad</small><b>${cn}</b><em>${pc}% del total</em></div>
+ <div class="k4"><small>Días</small><b>${nd}</b></div></div>`;
+ if(ks.length)h+=`<div class="card"><div class="ct">Novedades por día</div><div class="bars">${ks.map(k=>`<div class="bar"><span>${by[k]}</span><i style="height:${Math.max(4,Math.round(by[k]/mx*100))}%"></i><em>${k.slice(8)}/${k.slice(5,7)}</em></div>`).join("")}</div></div>`;
+ h+=`<div class="card"><div class="ct">Filtros</div><div class="g"><div><label>Fecha</label><input type="date" id="fl" value="${f}"></div><div><label>Reporte</label><select id="ft"><option value="">Todos</option><option value="r1">Reporte 1</option><option value="r2">Reporte 2</option></select></div></div>
+ <div class="row" style="margin-top:12px"><button class="btn pr" id="csv">Descargar CSV</button><button class="btn" data-ed="open">Editor de casillas</button><button class="btn" id="fc">Limpiar filtros</button><button class="btn" id="lo">Cerrar sesión</button></div>
+ <div class="mu" style="margin-top:8px">Datos guardados en Firebase (solo lectura, sin edición ni borrado).</div></div>`;
  h+=pdfCard();
  if(!L.length)h+='<div class="card mu">No hay reportes enviados con estos filtros.</div>';
- L.forEach(d=>{h+=`<div class="card"><div class="row"><b>${esc(fz(d.title))}</b><span class="pill ${d.total?"":"ok"}">${d.total?d.total+" novedad(es)":"Sin novedad"}</span></div>
- <div class="mu">Fecha: ${esc(d.date)} · Firma del guarda: ${new Date(d.signedAt||d.createdAt).toLocaleString("es-CO")} · Guarda: ${esc(d.guard)} · Supervisor: ${esc(d.sup)}</div>
- <details><summary>Ver detalle y firmas</summary>${d.nov.map(n=>`<div style="margin:6px 0"><b>${esc(n.r)}</b> <span class="mu">${esc(fz(n.s))}</span><br>${n.c.map(c=>`<span class="pill">${esc(c)}</span>`).join(" ")}${(n.fs||(n.f?[n.f]:[])).map((f,j)=>` <button class="btn" data-ph="${esc(f)}">📷 Foto ${j+1}</button>`).join("")}</div>`).join("")||'<p class="mu">Sin novedades.</p>'}
- ${d.obs?`<p><b>Observaciones:</b> ${esc(d.obs)}</p>`:""}
- <div class="row"><div><div class="mu">Guarda</div><img class="sig" src="${d.gs}"></div><div><div class="mu">Supervisor</div><img class="sig" src="${d.ss}"></div></div></details></div>`});
+ let last="";
+ L.forEach(d=>{
+  if(d.date!==last){last=d.date;const dt=new Date(d.date+"T12:00:00"),nm=isNaN(dt)?d.date:dt.toLocaleDateString("es-CO",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+   h+=`<div class="dh"><span>${esc(nm)}</span><small>${by[d.date]} novedad(es)</small></div>`}
+  const ty=d.type=="r2"?2:1,ttl=(R[d.type]?R[d.type].n:fz(d.title)).replace(/^Reporte\s*\d\s*·\s*/,""),sg=d.signedAt||d.createdAt,bad=sg&&dOf(sg)!==d.date;
+  h+=`<div class="rc ${d.total?"hv":"sn"}"><div class="rh"><span class="tg t${ty}">R${ty}</span><b>${esc(tc(ttl))}</b></div>
+  <div class="rb"><span class="pill ${d.total?"":"ok"}">${d.total?d.total+" novedad(es)":"Sin novedad"}</span>${bad?'<span class="pill wn" title="La fecha del reporte no coincide con el día de la firma">Revisar fecha</span>':""}</div>
+  <div class="mg"><div><small>Guarda</small>${esc(tc(d.guard))}</div><div><small>Supervisor</small>${esc(tc(d.sup))}</div><div><small>Fecha del reporte</small>${esc(fD(d.date))}</div><div><small>Firma del guarda</small>${sg?new Date(sg).toLocaleString("es-CO",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"—"}</div></div>
+  <details><summary>Ver detalle y firmas</summary>${d.nov.map(n=>`<div class="nv"><b>${esc(n.r)}</b> <span class="mu">${esc(fz(n.s))}</span><br>${n.c.map(c=>`<span class="pill">${esc(c)}</span>`).join(" ")}${(n.fs||(n.f?[n.f]:[])).map((f,j)=>` <button class="btn" data-ph="${esc(f)}">📷 Foto ${j+1}</button>`).join("")}</div>`).join("")||'<p class="mu">Sin novedades.</p>'}
+  ${d.obs?`<p><b>Observaciones:</b> ${esc(d.obs)}</p>`:""}
+  <div class="row"><div><div class="mu">Guarda</div><img class="sig" src="${d.gs}"></div><div><div class="mu">Supervisor</div><img class="sig" src="${d.ss}"></div></div></details></div>`});
  ED.flash="";$("#dash").innerHTML=h;$("#fl").value=f;$("#ft").value=ft;
+ $("#fc").onclick=()=>{$("#fl").value="";$("#ft").value="";renderDash()};
  $("#fl").onchange=$("#ft").onchange=renderDash;
  $("#csv").onclick=async()=>{const rows=[["Reporte","Fecha","Firma guarda","Guarda","Supervisor","Sección","Aula","Novedades","Fotos","Observaciones"]];
   L.forEach(d=>{if(!d.nov.length)rows.push([fz(d.title),d.date,new Date(d.signedAt||d.createdAt).toISOString(),d.guard,d.sup,"","","Sin novedad","",d.obs]);d.nov.forEach(n=>rows.push([fz(d.title),d.date,new Date(d.signedAt||d.createdAt).toISOString(),d.guard,d.sup,fz(n.s),n.r,n.c.join("; "),(n.fs||(n.f?[n.f]:[])).length||"",d.obs]))});
@@ -447,7 +491,7 @@ function restoreDraft(){
  safe(()=>{
   const o=JSON.parse(localStorage.getItem("draft")||"null");if(!o)return;
   ["r1","r2"].forEach(id=>{const d=o[id];if(!d)return;
-   st[id]={marks:new Set(d.marks||[]),date:d.date||today(),guard:d.guard||"",sup:d.sup||"",obs:d.obs||"",gs:d.gs||null,ss:d.ss||null,gt:d.gt||null,photos:normPh(d.photos)}});
+   st[id]={marks:new Set(d.marks||[]),date:(d.date&&d.date>=today())?d.date:today(),guard:d.guard||"",sup:d.sup||"",obs:d.obs||"",gs:d.gs||null,ss:d.ss||null,gt:d.gt||null,photos:normPh(d.photos)}});
   if(o.view=="r1"||o.view=="r2"||o.view=="dash")VIEW=o.view;
   if(VIEW!="dash")cur=VIEW;
   SCR=o.y||0;
