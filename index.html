@@ -79,7 +79,8 @@ details{margin-top:10px}summary{font-weight:600;color:var(--pr)}
 .ac-t{width:100%;border-collapse:collapse;font-size:13px}
 .ac-t th{background:var(--bg);padding:6px 8px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:var(--mu)}
 .ac-t td{padding:8px;text-align:left;border:0;border-top:1px solid var(--bd)}
-.ac-i{background:var(--bg);border-radius:8px;padding:8px 10px;margin-bottom:8px;word-break:break-word}.ac-i small{display:block;color:var(--mu)}
+.ac-i{background:var(--bg);border-radius:8px;padding:8px 10px;margin-bottom:8px;word-break:break-word;display:flex;justify-content:space-between;align-items:center;gap:8px}.ac-i small{display:block;color:var(--mu)}
+.ac-o{flex:none;border-color:var(--rd);color:var(--rd);padding:6px 10px;font-size:13px;font-weight:600}.ac-o:disabled{opacity:.5}
 .ac-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.ac-h .ct{margin:0}
 </style></head><body>
 <header><h1>AIS · REPORTE DIARIO DE NOVEDADES</h1>
@@ -203,7 +204,8 @@ let DT="rep";
 const AC={
  U1:"https://docs.google.com/spreadsheets/d/1nf60amlLaZTUmXu9k-IE7DTyl8RmCARJOdP5wuBjMjw/gviz/tq?gid=2145380964&tqx=out:json",
  U2:"https://docs.google.com/spreadsheets/d/1nf60amlLaZTUmXu9k-IE7DTyl8RmCARJOdP5wuBjMjw/gviz/tq?gid=366969943&tqx=out:json",
- hash:"",busy:false,sync:"--"
+ hash:"",busy:false,sync:"--",ing:[],sal:[],pend:new Map(),cur:{},
+ FORM:"https://docs.google.com/forms/d/e/1FAIpQLSedPNuvXarpvh2t9ssrBUa3AEPI8ZIu20CTpZa9tGcklEGKwQ/formResponse"
 };
 function dShell(){
  if($("#dp"))return;
@@ -228,6 +230,7 @@ function accBuild(){
   <div class="k4"><small>Proveedores dentro</small><b id="acPr">0</b></div>
   <div><small>Estado</small><b id="acEs" style="font-size:16px">🟡 Cargando</b></div>
   <div><small>Hora actual</small><b id="acHr" style="font-size:16px">--:--</b><em id="acSy">Sync: --</em></div></div>
+  <div id="acMsg"></div>
   <div class="card"><div class="ct">Últimos movimientos de hoy</div><div class="wrap"><table class="ac-t"><thead><tr><th>Hora</th><th>Nombre</th><th>Rol</th><th>Movimiento</th></tr></thead><tbody id="acTb"></tbody></table></div></div>
   <div class="ac2">
    <div class="card"><div class="ac-h"><div class="ct">Contratistas dentro</div><span class="pill ok" id="acCn">0</span></div><div id="acLc"></div></div>
@@ -260,13 +263,12 @@ async function accLoad(force){
   accSet("acEs","🟢 En línea");
   AC.sync=new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"});accSet("acSy","Sync: "+AC.sync);
   const h=JSON.stringify([a,s]);
-  if(!force&&h===AC.hash)return;
-  AC.hash=h;
   const ing=a.filter(f=>accHoy(f[0])),sal=s.filter(f=>accHoy(f[0]));
+  const pc=accPrune(sal);
+  if(!force&&h===AC.hash&&!pc)return;
+  AC.hash=h;AC.ing=ing;AC.sal=sal;
   accSet("acIn",ing.length);accSet("acOut",sal.length);
-  accMov(ing,sal);
-  accDentro(ing,sal,"CONTRATISTA","acLc","acCo","acCn","Sin contratistas activos");
-  accDentro(ing,sal,"PROVEEDOR","acLp","acPr","acPn","Sin proveedores activos");
+  accRender();
  }catch(e){
   accSet("acEs","🔴 Error");console.log(e);
  }finally{AC.busy=false}
@@ -278,13 +280,39 @@ function accMov(ing,sal){
  m.sort((x,y)=>accDate(y.h)-accDate(x.h));m=m.slice(0,10);
  $("#acTb").innerHTML=m.length?m.map(x=>`<tr><td>${accHora(x.h)}</td><td>${esc(x.n||"-")}</td><td>${esc(x.r||"-")}</td><td><span class="pill${x.t?" ok":""}">${x.t?"Ingreso":"Salida"}</span></td></tr>`).join(""):'<tr><td colspan="4" class="mu">Sin movimientos hoy</td></tr>';
 }
+function accRender(){
+ accMov(AC.ing,AC.sal);
+ accDentro(AC.ing,AC.sal,"CONTRATISTA","acLc","acCo","acCn","Sin contratistas activos");
+ accDentro(AC.ing,AC.sal,"PROVEEDOR","acLp","acPr","acPn","Sin proveedores activos");
+}
+function accPrune(sal){
+ const out=new Set(sal.map(x=>String(x[2]).trim()));let ch=false;
+ AC.pend.forEach((t,d)=>{if(out.has(d)||Date.now()-t>120000){AC.pend.delete(d);ch=true}});
+ return ch;
+}
 function accDentro(ing,sal,rol,lista,kpi,cn,vacio){
  const out=new Set(sal.map(x=>String(x[2]).trim())),mp=new Map();
- ing.forEach(f=>{if(String(f[4]||"").toUpperCase()===rol){const d=String(f[2]).trim();if(!out.has(d))mp.set(d,{n:f[3],e:f[5]||"-"})}});
+ ing.forEach(f=>{if(String(f[4]||"").toUpperCase()===rol){const d=String(f[2]).trim();if(!out.has(d)&&!AC.pend.has(d))mp.set(d,{n:f[3],e:f[5]||"-",d:d,t:f[1]||""})}});
+ AC.cur[rol]=mp;
  const act=[...mp.values()];
  accSet(kpi,act.length);accSet(cn,act.length);
- $("#"+lista).innerHTML=act.length?act.map(x=>`<div class="ac-i"><b>${esc(x.n||"-")}</b><small>${esc(x.e)}</small></div>`).join(""):'<div class="mu">'+vacio+'</div>';
+ $("#"+lista).innerHTML=act.length?act.map(x=>`<div class="ac-i"><div><b>${esc(x.n||"-")}</b><small>${esc(x.e)}</small></div><button class="btn ac-o" data-ao="${esc(x.d)}" data-ar="${rol}">Dar salida</button></div>`).join(""):'<div class="mu">'+vacio+'</div>';
 }
+function accMsg(t,c){const e=$("#acMsg");if(!e)return;e.innerHTML='<div class="msg '+c+'">'+esc(t)+'</div>';setTimeout(()=>{if($("#acMsg")===e)e.innerHTML=""},5000)}
+function accSalida(doc,rol){
+ const x=(AC.cur[rol]||new Map()).get(doc);
+ if(!x||AC.pend.has(doc))return;
+ if(!confirm("¿Registrar la salida de "+(x.n||doc)+"?"))return;
+ const q=encodeURIComponent,
+  url=AC.FORM+"?usp=pp_url&entry.349719305="+q(rol)+"&entry.232043619="+q(x.n||"")+"&entry.861901166="+q(x.t)+"&entry.1077137573="+q(x.d);
+ const fr=document.createElement("iframe");fr.style.display="none";fr.src=url;document.body.appendChild(fr);
+ setTimeout(()=>fr.remove(),4000);
+ AC.pend.set(doc,Date.now());
+ accRender();
+ accMsg("✅ Salida enviada: "+(x.n||doc),"good");
+ setTimeout(()=>accLoad(true),2500);
+}
+document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-ao]");if(b)accSalida(b.dataset.ao,b.dataset.ar)});
 setInterval(()=>{if(accVis())accLoad(false)},4000);
 setInterval(()=>{if(accVis())accSet("acHr",new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}))},1000);
 
