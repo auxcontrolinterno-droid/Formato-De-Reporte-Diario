@@ -67,6 +67,9 @@ html[data-theme=dark] .tg{color:#111}
 .pill.wn{background:rgba(230,160,20,.18);color:#b87400}
 .nv{margin:8px 0;padding:8px;border-radius:8px;background:var(--bg)}
 details{margin-top:10px}summary{font-weight:600;color:var(--pr)}
+.rec{min-width:0}.rec textarea{resize:vertical;margin-top:6px}
+.rn{background:var(--bg);border-left:3px solid var(--pr);border-radius:8px;padding:8px 10px;margin:8px 0;word-break:break-word}
+.rn small{color:var(--mu);display:inline-block;margin:4px 8px 0 0}
 </style></head><body>
 <header><h1>AIS · REPORTE DIARIO DE NOVEDADES</h1>
 <nav><button data-v="r1" class="on">REPORTE 1</button><button data-v="r2">REPORTE 2</button><button data-v="dash">DASHBOARD</button></nav></header>
@@ -203,7 +206,7 @@ function renderDash(){
  h+=`<div class="card"><div class="ct">Filtros</div><div class="g"><div><label>Fecha</label><input type="date" id="fl" value="${f}"></div><div><label>Reporte</label><select id="ft"><option value="">Todos</option><option value="r1">Reporte 1</option><option value="r2">Reporte 2</option></select></div></div>
  <div class="row" style="margin-top:12px"><button class="btn pr" id="csv">Descargar CSV</button><button class="btn" data-ed="open">Editor de casillas</button><button class="btn" id="fc">Limpiar filtros</button><button class="btn" id="lo">Cerrar sesión</button></div>
  <div class="mu" style="margin-top:8px">Datos guardados en Firebase (solo lectura, sin edición ni borrado).</div></div>`;
- h+=pdfCard();
+ h+=pdfCard();h+=recCard();
  if(!L.length)h+='<div class="card mu">No hay reportes enviados con estos filtros.</div>';
  let last="";
  L.forEach(d=>{
@@ -224,7 +227,39 @@ function renderDash(){
   const data="\ufeff"+rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(",")).join("\n");
   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([data],{type:"text/csv;charset=utf-8"}));a.download="reportes-novedades.csv";a.click()};
  if($("#lo"))$("#lo").onclick=()=>FB.logout();
+ recSync();
 }
+
+/* ===== Recomendaciones por período (semanal / mensual) ===== */
+const REC={w:[],m:[],d:{w:"",m:""},err:{w:"",m:""}},RECK={w:"",m:""};
+const recName=e=>String(e||"").split("@")[0].replace(/[._-]+/g," ").toLowerCase().replace(/(^|\s)\S/g,m=>m.toUpperCase())||"Supervisor";
+const recId=k=>k=="w"?"w_"+weekRange(PDF.w)[0]:"m_"+PDF.m;
+function recSync(){
+ if(!window.FB||!FB.recWatch)return;
+ ["w","m"].forEach(k=>{const p=recId(k);if(RECK[k]!==p){RECK[k]=p;REC[k]=[];REC.err[k]="";FB.recWatch(k,p,l=>{REC[k]=l;recPaint(k)})}})}
+function recList(k){
+ if(REC.err[k])return '<div class="msg err">'+esc(REC.err[k])+'</div>';
+ const l=REC[k].slice().sort((a,b)=>a.at-b.at);
+ if(!l.length)return '<div class="mu" style="margin:8px 0">Sin recomendaciones para este período.</div>';
+ return l.map(x=>`<div class="rn"><div>${esc(x.t).replace(/\n/g,"<br>")}</div><small>${esc(recName(x.who))} · ${new Date(x.at).toLocaleString("es-CO",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})}</small>${x.by===UID?` <button class="btn" style="padding:2px 8px;font-size:12px" data-rd="${esc(x.id)}">Eliminar</button>`:""}</div>`).join("")}
+function recPaint(k){const e=$("#rl_"+k);if(e)e.innerHTML=recList(k)}
+function recCard(){
+ const r=weekRange(PDF.w),P=[["w","Semana",fmtD(r[0])+" al "+fmtD(r[1])],["m","Mes",MES[+PDF.m.slice(5,7)-1]+" de "+PDF.m.slice(0,4)]];
+ return `<div class="card"><div class="ct">Recomendaciones del período</div><div class="mu" style="margin:-4px 0 10px">Se asocian a la semana o al mes elegido en “Reportes PDF” y se imprimen al final del PDF.</div><div class="g">`+
+ P.map(([k,t,sub])=>`<div class="rec"><b>${t}</b> <span class="mu">${esc(sub)}</span><div id="rl_${k}">${recList(k)}</div><textarea id="rt_${k}" rows="3" maxlength="2000" placeholder="Escriba una recomendación…" data-rk="${k}">${esc(REC.d[k])}</textarea><div class="row" style="margin-top:6px"><button class="btn pr" data-ra="${k}">Agregar recomendación</button></div><div id="rm_${k}"></div></div>`).join("")+`</div></div>`}
+document.addEventListener("input",e=>{const t=e.target;if(t.dataset&&t.dataset.rk)REC.d[t.dataset.rk]=t.value});
+document.addEventListener("click",async e=>{
+ const t=e.target.closest?e.target.closest("[data-ra],[data-rd]"):null;if(!t)return;
+ if(t.dataset.ra){const k=t.dataset.ra,v=(REC.d[k]||"").trim(),m=$("#rm_"+k);
+  if(!v){m.innerHTML='<div class="msg err">Escriba la recomendación antes de agregarla.</div>';return}
+  if(!window.FB||!FB.recAdd){m.innerHTML='<div class="msg err">Firebase no cargó. Verifique la conexión.</div>';return}
+  t.disabled=true;
+  try{await Promise.race([FB.recAdd(RECK[k],k,v.slice(0,2000)),new Promise((_,ko)=>setTimeout(()=>ko(new Error("t")),15000))]);REC.d[k]="";const ta=$("#rt_"+k);if(ta)ta.value="";if($("#rm_"+k))$("#rm_"+k).innerHTML='<div class="msg good">Recomendación guardada.</div>'}
+  catch(err){if($("#rm_"+k))$("#rm_"+k).innerHTML='<div class="msg err">No se pudo guardar. Verifique la conexión y los permisos de Firebase.</div>'}
+  finally{t.disabled=false}}
+ else if(t.dataset.rd){if(!confirm("¿Eliminar esta recomendación?"))return;
+  try{await FB.recDel(t.dataset.rd)}catch(err){alert("No se pudo eliminar la recomendación.")}}
+});
 
 /* ===== Editor de casillas (solo autorizados del Dashboard) ===== */
 const ED={on:false,rep:"r1",sec:0,draft:null,flash:""};
@@ -465,6 +500,10 @@ async function makePdf(kind){
   const ob=L.filter(d=>d.obs).map(d=>[fmtD(d.date),d.type=="r1"?"Reporte 1":"Reporte 2",d.obs]);
   if(ob.length){y=need(doc.lastAutoTable.finalY+8,30);pill("Observaciones generales",M,y,CW);
    doc.autoTable(Object.assign({},tblBase,{startY:y+9,head:[["Fecha","Reporte","Observación"]],body:ob,columnStyles:{0:{cellWidth:20,halign:"center"},1:{cellWidth:18,halign:"center"}}}))}
+  /* --- recomendaciones --- */
+  {const rc=(REC[kind]||[]).slice().sort((x,y)=>x.at-y.at);
+   if(rc.length){y=need((doc.lastAutoTable?doc.lastAutoTable.finalY:y)+8,40);pill("Recomendaciones",M,y,CW);
+    doc.autoTable(Object.assign({},tblBase,{startY:y+9,head:[["#","Recomendación","Autor","Fecha"]],body:rc.map((x,i)=>[i+1,x.t,recName(x.who),new Date(x.at).toLocaleDateString("es-CO")]),columnStyles:{0:{cellWidth:8,halign:"center"},2:{cellWidth:34},3:{cellWidth:22,halign:"center"}}}))}}
   /* --- pie y encabezado de páginas --- */
   const N=doc.getNumberOfPages();
   for(let i=1;i<=N;i++){doc.setPage(i);dc(PR);doc.setLineWidth(.4);doc.line(M,287,W-M,287);
@@ -526,10 +565,10 @@ const _go=()=>window.scrollTo(0,SCR);_go();setTimeout(_go,150);setTimeout(_go,60
 </script><script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js";
 import {getAuth,signInAnonymously,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
-import {getFirestore,doc,setDoc,getDoc,writeBatch,collection,query,orderBy,limit,onSnapshot} from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+import {getFirestore,doc,setDoc,getDoc,deleteDoc,writeBatch,collection,query,where,orderBy,limit,onSnapshot} from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
 // ====== PEGUE AQUÍ SU CONFIGURACIÓN DE FIREBASE (Configuración del proyecto → Tus apps → Web) ======
 const firebaseConfig={apiKey:"AIzaSyBBzKShRsFtf65AXnMWOJlVl0hCAzcAyGY",authDomain:"formato-de-reporte-diario.firebaseapp.com",projectId:"formato-de-reporte-diario",storageBucket:"formato-de-reporte-diario.firebasestorage.app",messagingSenderId:"462001738427",appId:"1:462001738427:web:47010f745d50c40d324f9e"};
-const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);let unsub=null,lunsub=null;
+const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);let unsub=null,lunsub=null,runs={};
 window.FB={
  add:(id,d,ph)=>{
   if(!ph||!ph.length)return setDoc(doc(db,"reportes",id),d);
@@ -539,10 +578,15 @@ window.FB={
  photo:async id=>{const x=await getDoc(doc(db,"evidencias",id));if(!x.exists())throw new Error("sin foto");return x.data().d},
  login:(e,p)=>signInWithEmailAndPassword(auth,e,p),
  logout:async()=>{await signOut(auth)},
- saveLayout:o=>setDoc(doc(db,"config","layout"),{data:JSON.stringify(o),updatedAt:Date.now(),by:UID})
+ saveLayout:o=>setDoc(doc(db,"config","layout"),{data:JSON.stringify(o),updatedAt:Date.now(),by:UID}),
+ recAdd:(p,k,t)=>setDoc(doc(db,"recomendaciones",p+"_"+Date.now()+"_"+Math.random().toString(36).slice(2,6)),{p,k,t,by:UID,who:(auth.currentUser&&auth.currentUser.email)||"",at:Date.now()}),
+ recDel:id=>deleteDoc(doc(db,"recomendaciones",id)),
+ recWatch:(k,p,ok)=>{if(runs[k])runs[k]();runs[k]=onSnapshot(query(collection(db,"recomendaciones"),where("p","==",p)),s=>{REC.err[k]="";ok(s.docs.map(d=>Object.assign({id:d.id},d.data())))},e=>{REC.err[k]="No se pudieron cargar las recomendaciones (revise las reglas de Firebase).";ok([])})},
+ recStop:()=>{Object.values(runs).forEach(f=>f&&f());runs={};RECK.w=RECK.m="";REC.w=[];REC.m=[]}
 };
 onAuthStateChanged(auth,u=>{
  if(unsub){unsub();unsub=null}
+ FB.recStop();
  if(!u){signInAnonymously(auth).catch(()=>{});setAll([],false);return}
  UID=u.uid;
  if(!lunsub)lunsub=onSnapshot(doc(db,"config","layout"),s=>{if(!s.exists())return;try{const raw=s.data().data;applyLayout(JSON.parse(raw));safe(()=>localStorage.setItem("lay",raw))}catch(e){}},()=>{lunsub=null});
