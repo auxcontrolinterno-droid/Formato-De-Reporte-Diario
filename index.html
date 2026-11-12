@@ -70,6 +70,17 @@ details{margin-top:10px}summary{font-weight:600;color:var(--pr)}
 .rec{min-width:0}.rec textarea{resize:vertical;margin-top:6px}
 .rn{background:var(--bg);border-left:3px solid var(--pr);border-radius:8px;padding:8px 10px;margin:8px 0;word-break:break-word}
 .rn small{color:var(--mu);display:inline-block;margin:4px 8px 0 0}
+
+.dsub{display:flex;gap:4px;margin:0 0 12px;border-bottom:2px solid var(--bd)}
+.dsub button{border:0;background:none;color:var(--mu);font:inherit;font-weight:700;padding:10px 14px;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px}
+.dsub button.on{color:var(--pr);border-bottom-color:var(--pr)}
+.ac2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.ac2 .card{margin-bottom:0}
+.ac-t{width:100%;border-collapse:collapse;font-size:13px}
+.ac-t th{background:var(--bg);padding:6px 8px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:var(--mu)}
+.ac-t td{padding:8px;text-align:left;border:0;border-top:1px solid var(--bd)}
+.ac-i{background:var(--bg);border-radius:8px;padding:8px 10px;margin-bottom:8px;word-break:break-word}.ac-i small{display:block;color:var(--mu)}
+.ac-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.ac-h .ct{margin:0}
 </style></head><body>
 <header><h1>AIS · REPORTE DIARIO DE NOVEDADES</h1>
 <nav><button data-v="r1" class="on">REPORTE 1</button><button data-v="r2">REPORTE 2</button><button data-v="dash">DASHBOARD</button></nav></header>
@@ -186,8 +197,100 @@ async function flush(){
  const rest=[];for(const p of q){try{await FB.add(p.id,p.doc,p.ph)}catch(e){const m=String(e.message||e);if(!/permission|already|denied/i.test(m)||(p.ph&&p.ph.length&&(p.t=(p.t||0)+1)<6))rest.push(p)}}
  safe(()=>localStorage.setItem("pend",JSON.stringify(rest)));
 }
+
+/* ===== DASHBOARD: sub-pestañas + Control de acceso ===== */
+let DT="rep";
+const AC={
+ U1:"https://docs.google.com/spreadsheets/d/1nf60amlLaZTUmXu9k-IE7DTyl8RmCARJOdP5wuBjMjw/gviz/tq?gid=2145380964&tqx=out:json",
+ U2:"https://docs.google.com/spreadsheets/d/1nf60amlLaZTUmXu9k-IE7DTyl8RmCARJOdP5wuBjMjw/gviz/tq?gid=366969943&tqx=out:json",
+ hash:"",busy:false,sync:"--"
+};
+function dShell(){
+ if($("#dp"))return;
+ $("#dash").innerHTML='<div class="dsub"><button data-dt="rep">Reportes</button><button data-dt="acc">Control de acceso</button></div><div id="dp"></div><div id="da" class="hide"></div>';
+ dTab(DT);
+}
+function dTab(t){
+ DT=t;
+ document.querySelectorAll(".dsub button").forEach(b=>b.classList.toggle("on",b.dataset.dt==t));
+ $("#dp").classList.toggle("hide",t!="rep");
+ $("#da").classList.toggle("hide",t!="acc");
+ if(t=="acc"){accBuild();accLoad(true)}
+}
+document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-dt]");if(b&&$("#dp"))dTab(b.dataset.dt)});
+function accVis(){return AUTH&&DT=="acc"&&$("#da")&&!$("#dash").classList.contains("hide")&&!document.hidden}
+function accBuild(){
+ const da=$("#da");if(!da||da.dataset.b)return;da.dataset.b="1";
+ da.innerHTML=`<div class="k">
+  <div class="k1"><small>Ingresos hoy</small><b id="acIn">0</b></div>
+  <div class="k2"><small>Salidas hoy</small><b id="acOut">0</b></div>
+  <div class="k3"><small>Contratistas dentro</small><b id="acCo">0</b></div>
+  <div class="k4"><small>Proveedores dentro</small><b id="acPr">0</b></div>
+  <div><small>Estado</small><b id="acEs" style="font-size:16px">🟡 Cargando</b></div>
+  <div><small>Hora actual</small><b id="acHr" style="font-size:16px">--:--</b><em id="acSy">Sync: --</em></div></div>
+  <div class="card"><div class="ct">Últimos movimientos de hoy</div><div class="wrap"><table class="ac-t"><thead><tr><th>Hora</th><th>Nombre</th><th>Rol</th><th>Movimiento</th></tr></thead><tbody id="acTb"></tbody></table></div></div>
+  <div class="ac2">
+   <div class="card"><div class="ac-h"><div class="ct">Contratistas dentro</div><span class="pill ok" id="acCn">0</span></div><div id="acLc"></div></div>
+   <div class="card"><div class="ac-h"><div class="ct">Proveedores dentro</div><span class="pill ok" id="acPn">0</span></div><div id="acLp"></div></div>
+  </div>
+  <div class="mu" style="margin-top:10px">Datos en vivo de la hoja de Control de Acceso · se actualiza cada 4 segundos.</div>`;
+}
+async function accSheet(u){
+ const r=await fetch(u),t=await r.text();
+ const j=JSON.parse(t.slice(t.indexOf("{"),t.lastIndexOf("}")+1));
+ return j.table.rows.map(r=>(r.c||[]).map(x=>x?x.v:""));
+}
+function accDate(v){
+ if(!v)return null;
+ if(v instanceof Date)return v;
+ if(typeof v==="string"&&v.indexOf("Date(")===0){const n=v.match(/\d+/g).map(Number);return new Date(n[0],n[1],n[2],n[3]||0,n[4]||0,n[5]||0)}
+ if(typeof v==="number")return new Date(Math.round((v-25569)*86400*1000));
+ if(typeof v==="string"){const d=new Date(v);if(!isNaN(d))return d}
+ return null;
+}
+function accHoy(v){const f=accDate(v);if(!f)return false;const h=new Date();return f.getDate()===h.getDate()&&f.getMonth()===h.getMonth()&&f.getFullYear()===h.getFullYear()}
+function accHora(v){const f=accDate(v);return f?f.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}):"--"}
+function accSet(id,v){const e=$("#"+id);if(e)e.textContent=v}
+async function accLoad(force){
+ if(AC.busy||!$("#da"))return;
+ AC.busy=true;
+ try{
+  const [a,s]=await Promise.all([accSheet(AC.U1),accSheet(AC.U2)]);
+  if(!$("#da")||!$("#acIn"))return;
+  accSet("acEs","🟢 En línea");
+  AC.sync=new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"});accSet("acSy","Sync: "+AC.sync);
+  const h=JSON.stringify([a,s]);
+  if(!force&&h===AC.hash)return;
+  AC.hash=h;
+  const ing=a.filter(f=>accHoy(f[0])),sal=s.filter(f=>accHoy(f[0]));
+  accSet("acIn",ing.length);accSet("acOut",sal.length);
+  accMov(ing,sal);
+  accDentro(ing,sal,"CONTRATISTA","acLc","acCo","acCn","Sin contratistas activos");
+  accDentro(ing,sal,"PROVEEDOR","acLp","acPr","acPn","Sin proveedores activos");
+ }catch(e){
+  accSet("acEs","🔴 Error");console.log(e);
+ }finally{AC.busy=false}
+}
+function accMov(ing,sal){
+ let m=[];
+ ing.forEach(f=>m.push({h:f[0],n:f[3],r:f[4],t:1}));
+ sal.forEach(f=>m.push({h:f[0],n:f[3],r:f[4],t:0}));
+ m.sort((x,y)=>accDate(y.h)-accDate(x.h));m=m.slice(0,10);
+ $("#acTb").innerHTML=m.length?m.map(x=>`<tr><td>${accHora(x.h)}</td><td>${esc(x.n||"-")}</td><td>${esc(x.r||"-")}</td><td><span class="pill${x.t?" ok":""}">${x.t?"Ingreso":"Salida"}</span></td></tr>`).join(""):'<tr><td colspan="4" class="mu">Sin movimientos hoy</td></tr>';
+}
+function accDentro(ing,sal,rol,lista,kpi,cn,vacio){
+ const out=new Set(sal.map(x=>String(x[2]).trim())),mp=new Map();
+ ing.forEach(f=>{if(String(f[4]||"").toUpperCase()===rol){const d=String(f[2]).trim();if(!out.has(d))mp.set(d,{n:f[3],e:f[5]||"-"})}});
+ const act=[...mp.values()];
+ accSet(kpi,act.length);accSet(cn,act.length);
+ $("#"+lista).innerHTML=act.length?act.map(x=>`<div class="ac-i"><b>${esc(x.n||"-")}</b><small>${esc(x.e)}</small></div>`).join(""):'<div class="mu">'+vacio+'</div>';
+}
+setInterval(()=>{if(accVis())accLoad(false)},4000);
+setInterval(()=>{if(accVis())accSet("acHr",new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}))},1000);
+
 function renderDash(){
  if(!AUTH){ED.on=false;$("#dash").innerHTML=`<div class="card"><b>Dashboard – acceso restringido</b><p class="mu">Ingrese con su correo y contraseña de supervisor/administrador.</p><div class="g"><div><label>Correo</label><input id="le" type="email"></div><div><label>Contraseña</label><input id="lp" type="password"></div></div><div class="row" style="margin-top:10px"><button class="btn pr" id="li">Ingresar</button></div><div id="lm"></div></div>`;return}
+ dShell();
  const f=($("#fl")||{}).value||"",ft=($("#ft")||{}).value||"";
  let L=all.filter(d=>(!f||d.date==f)&&(!ft||d.type==ft)).sort((x,y)=>x.date<y.date?1:x.date>y.date?-1:(y.createdAt||0)-(x.createdAt||0));
  const tc=t=>String(t||"").toLowerCase().replace(/(^|\s)\S/g,m=>m.toUpperCase());
@@ -219,7 +322,7 @@ function renderDash(){
   <details><summary>Ver detalle y firmas</summary>${d.nov.map(n=>`<div class="nv"><b>${esc(n.r)}</b> <span class="mu">${esc(fz(n.s))}</span><br>${n.c.map(c=>`<span class="pill">${esc(c)}</span>`).join(" ")}${(n.fs||(n.f?[n.f]:[])).map((f,j)=>` <button class="btn" data-ph="${esc(f)}">📷 Foto ${j+1}</button>`).join("")}</div>`).join("")||'<p class="mu">Sin novedades.</p>'}
   ${d.obs?`<p><b>Observaciones:</b> ${esc(d.obs)}</p>`:""}
   <div class="row"><div><div class="mu">Guarda</div><img class="sig" src="${d.gs}"></div><div><div class="mu">Supervisor</div><img class="sig" src="${d.ss}"></div></div></details></div>`});
- ED.flash="";$("#dash").innerHTML=h;$("#fl").value=f;$("#ft").value=ft;
+ ED.flash="";$("#dp").innerHTML=h;$("#fl").value=f;$("#ft").value=ft;
  $("#fc").onclick=()=>{$("#fl").value="";$("#ft").value="";renderDash()};
  $("#fl").onchange=$("#ft").onchange=renderDash;
  $("#csv").onclick=async()=>{const rows=[["Reporte","Fecha","Firma guarda","Guarda","Supervisor","Sección","Aula","Novedades","Fotos","Observaciones"]];
