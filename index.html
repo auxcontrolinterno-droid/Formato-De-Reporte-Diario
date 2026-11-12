@@ -82,6 +82,11 @@ details{margin-top:10px}summary{font-weight:600;color:var(--pr)}
 .ac-i{background:var(--bg);border-radius:8px;padding:8px 10px;margin-bottom:8px;word-break:break-word;display:flex;justify-content:space-between;align-items:center;gap:8px}.ac-i small{display:block;color:var(--mu)}
 .ac-o{flex:none;border-color:var(--rd);color:var(--rd);padding:6px 10px;font-size:13px;font-weight:600}.ac-o:disabled{opacity:.5}
 .ac-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.ac-h .ct{margin:0}
+.bp{background:var(--sf);border:1px solid var(--bd);border-left:5px solid var(--pr);border-radius:10px;padding:12px;margin-bottom:12px;box-shadow:0 1px 3px rgba(20,30,60,.06)}
+.bp h3{margin:0;font-size:15px;line-height:1.25}
+.bp .nv{margin:8px 0 0}.bp .nv b{display:block;margin-bottom:6px;font-size:13px}
+.bp .mg b{font-weight:600;word-break:break-word}
+.pill.gy{background:var(--bg);color:var(--mu)}
 </style></head><body>
 <header><h1>AIS · REPORTE DIARIO DE NOVEDADES</h1>
 <nav><button data-v="r1" class="on">REPORTE 1</button><button data-v="r2">REPORTE 2</button><button data-v="dash">DASHBOARD</button></nav></header>
@@ -204,12 +209,12 @@ let DT="rep";
 const AC={
  U1:"https://docs.google.com/spreadsheets/d/1nf60amlLaZTUmXu9k-IE7DTyl8RmCARJOdP5wuBjMjw/gviz/tq?gid=2145380964&tqx=out:json",
  U2:"https://docs.google.com/spreadsheets/d/1nf60amlLaZTUmXu9k-IE7DTyl8RmCARJOdP5wuBjMjw/gviz/tq?gid=366969943&tqx=out:json",
- hash:"",busy:false,sync:"--",ing:[],sal:[],pend:new Map(),cur:{},
+ hash:"",busy:false,sync:"--",ing:[],sal:[],pend:new Map(),cur:{},all:[],allS:[],cols:[],bo:new Set(),
  FORM:"https://docs.google.com/forms/d/e/1FAIpQLSedPNuvXarpvh2t9ssrBUa3AEPI8ZIu20CTpZa9tGcklEGKwQ/formResponse"
 };
 function dShell(){
  if($("#dp"))return;
- $("#dash").innerHTML='<div class="dsub"><button data-dt="rep">Reportes</button><button data-dt="acc">Control de acceso</button></div><div id="dp"></div><div id="da" class="hide"></div>';
+ $("#dash").innerHTML='<div class="dsub"><button data-dt="rep">Reportes</button><button data-dt="acc">Control de acceso</button><button data-dt="bus">Buscar ingresos</button></div><div id="dp"></div><div id="da" class="hide"></div><div id="db" class="hide"></div>';
  dTab(DT);
 }
 function dTab(t){
@@ -217,10 +222,12 @@ function dTab(t){
  document.querySelectorAll(".dsub button").forEach(b=>b.classList.toggle("on",b.dataset.dt==t));
  $("#dp").classList.toggle("hide",t!="rep");
  $("#da").classList.toggle("hide",t!="acc");
- if(t=="acc"){accBuild();accLoad(true)}
+ $("#db").classList.toggle("hide",t!="bus");
+ if(t=="acc"||t=="bus"){accBuild();accLoad(true)}
+ if(t=="bus")busBuild();
 }
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-dt]");if(b&&$("#dp"))dTab(b.dataset.dt)});
-function accVis(){return AUTH&&DT=="acc"&&$("#da")&&!$("#dash").classList.contains("hide")&&!document.hidden}
+function accVis(){return AUTH&&(DT=="acc"||DT=="bus")&&$("#da")&&!$("#dash").classList.contains("hide")&&!document.hidden}
 function accBuild(){
  const da=$("#da");if(!da||da.dataset.b)return;da.dataset.b="1";
  da.innerHTML=`<div class="k">
@@ -228,6 +235,7 @@ function accBuild(){
   <div class="k2"><small>Salidas hoy</small><b id="acOut">0</b></div>
   <div class="k3"><small>Contratistas dentro</small><b id="acCo">0</b></div>
   <div class="k4"><small>Proveedores dentro</small><b id="acPr">0</b></div>
+  <div class="k1"><small>Visitantes dentro</small><b id="acVi">0</b></div>
   <div><small>Estado</small><b id="acEs" style="font-size:16px">🟡 Cargando</b></div>
   <div><small>Hora actual</small><b id="acHr" style="font-size:16px">--:--</b><em id="acSy">Sync: --</em></div></div>
   <div id="acMsg"></div>
@@ -235,13 +243,15 @@ function accBuild(){
   <div class="ac2">
    <div class="card"><div class="ac-h"><div class="ct">Contratistas dentro</div><span class="pill ok" id="acCn">0</span></div><div id="acLc"></div></div>
    <div class="card"><div class="ac-h"><div class="ct">Proveedores dentro</div><span class="pill ok" id="acPn">0</span></div><div id="acLp"></div></div>
+   <div class="card"><div class="ac-h"><div class="ct">Visitantes dentro</div><span class="pill ok" id="acVn">0</span></div><div id="acLv"></div></div>
   </div>
   <div class="mu" style="margin-top:10px">Datos en vivo de la hoja de Control de Acceso · se actualiza cada 4 segundos.</div>`;
 }
 async function accSheet(u){
  const r=await fetch(u),t=await r.text();
  const j=JSON.parse(t.slice(t.indexOf("{"),t.lastIndexOf("}")+1));
- return j.table.rows.map(r=>(r.c||[]).map(x=>x?x.v:""));
+  const rows=j.table.rows.map(r=>(r.c||[]).map(x=>x?x.v:""));
+ return Object.assign(rows,{cols:(j.table.cols||[]).map(c=>c.label||"")});
 }
 function accDate(v){
  if(!v)return null;
@@ -263,12 +273,13 @@ async function accLoad(force){
   accSet("acEs","🟢 En línea");
   AC.sync=new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"});accSet("acSy","Sync: "+AC.sync);
   const h=JSON.stringify([a,s]);
+  AC.all=a;AC.allS=s;AC.cols=a.cols||[];
   const ing=a.filter(f=>accHoy(f[0])),sal=s.filter(f=>accHoy(f[0]));
   const pc=accPrune(sal);
   if(!force&&h===AC.hash&&!pc)return;
   AC.hash=h;AC.ing=ing;AC.sal=sal;
   accSet("acIn",ing.length);accSet("acOut",sal.length);
-  accRender();
+  accRender();busRender();
  }catch(e){
   accSet("acEs","🔴 Error");console.log(e);
  }finally{AC.busy=false}
@@ -284,27 +295,32 @@ function accRender(){
  accMov(AC.ing,AC.sal);
  accDentro(AC.ing,AC.sal,"CONTRATISTA","acLc","acCo","acCn","Sin contratistas activos");
  accDentro(AC.ing,AC.sal,"PROVEEDOR","acLp","acPr","acPn","Sin proveedores activos");
+ accDentro(AC.ing,AC.sal,"VISITANTE","acLv","acVi","acVn","Sin visitantes dentro",r=>{const u=String(r||"").trim().toUpperCase();return u!=="CONTRATISTA"&&u!=="PROVEEDOR"});
 }
 function accPrune(sal){
  const out=new Set(sal.map(x=>String(x[2]).trim()));let ch=false;
  AC.pend.forEach((t,d)=>{if(out.has(d)||Date.now()-t>120000){AC.pend.delete(d);ch=true}});
  return ch;
 }
-function accDentro(ing,sal,rol,lista,kpi,cn,vacio){
- const out=new Set(sal.map(x=>String(x[2]).trim())),mp=new Map();
- ing.forEach(f=>{if(String(f[4]||"").toUpperCase()===rol){const d=String(f[2]).trim();if(!out.has(d)&&!AC.pend.has(d))mp.set(d,{n:f[3],e:f[5]||"-",d:d,t:f[1]||""})}});
+function accDentro(ing,sal,rol,lista,kpi,cn,vacio,test){
+ test=test||(r=>String(r||"").toUpperCase()===rol);
+ const last=new Map(),mp=new Map();
+ sal.forEach(f=>{const d=String(f[2]).trim(),t=+accDate(f[0])||0;if(t>(last.get(d)||0))last.set(d,t)});
+ ing.forEach(f=>{if(!test(f[4]))return;const d=String(f[2]).trim(),t=+accDate(f[0])||0;
+  if((last.has(d)&&t<=last.get(d))||AC.pend.has(d))return;
+  const p=mp.get(d);if(!p||t>p.at)mp.set(d,{n:f[3],e:f[5]||"-",d:d,t:f[1]||"",r:String(f[4]||"").trim(),h:f[0],at:t})});
  AC.cur[rol]=mp;
  const act=[...mp.values()];
  accSet(kpi,act.length);accSet(cn,act.length);
- $("#"+lista).innerHTML=act.length?act.map(x=>`<div class="ac-i"><div><b>${esc(x.n||"-")}</b><small>${esc(x.e)}</small></div><button class="btn ac-o" data-ao="${esc(x.d)}" data-ar="${rol}">Dar salida</button></div>`).join(""):'<div class="mu">'+vacio+'</div>';
+ $("#"+lista).innerHTML=act.length?act.map(x=>`<div class="ac-i"><div><b>${esc(x.n||"-")}</b><small>${esc(x.e)} · ${accHora(x.h)}</small></div><button class="btn ac-o" data-ao="${esc(x.d)}" data-ar="${rol}">Dar salida</button></div>`).join(""):'<div class="mu">'+vacio+'</div>';
 }
 function accMsg(t,c){const e=$("#acMsg");if(!e)return;e.innerHTML='<div class="msg '+c+'">'+esc(t)+'</div>';setTimeout(()=>{if($("#acMsg")===e)e.innerHTML=""},5000)}
 function accSalida(doc,rol){
  const x=(AC.cur[rol]||new Map()).get(doc);
  if(!x||AC.pend.has(doc))return;
  if(!confirm("¿Registrar la salida de "+(x.n||doc)+"?"))return;
- const q=encodeURIComponent,
-  url=AC.FORM+"?usp=pp_url&entry.349719305="+q(rol)+"&entry.232043619="+q(x.n||"")+"&entry.861901166="+q(x.t)+"&entry.1077137573="+q(x.d);
+ const rf=(rol==="VISITANTE"?x.r:rol)||rol,q=encodeURIComponent,
+  url=AC.FORM+"?usp=pp_url&entry.349719305="+q(rf)+"&entry.232043619="+q(x.n||"")+"&entry.861901166="+q(x.t)+"&entry.1077137573="+q(x.d);
  const fr=document.createElement("iframe");fr.style.display="none";fr.src=url;document.body.appendChild(fr);
  setTimeout(()=>fr.remove(),4000);
  AC.pend.set(doc,Date.now());
@@ -315,6 +331,55 @@ function accSalida(doc,rol){
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-ao]");if(b)accSalida(b.dataset.ao,b.dataset.ar)});
 setInterval(()=>{if(accVis())accLoad(false)},4000);
 setInterval(()=>{if(accVis())accSet("acHr",new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}))},1000);
+
+/* ===== Subpestaña: Buscar ingresos (por nombre o cédula) ===== */
+const busNorm=v=>String(v==null?"":v).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
+const busNum=v=>String(v==null?"":v).replace(/\D/g,"");
+function busFmt(v){
+ if(v===""||v==null)return "";
+ if(Array.isArray(v))return esc(v.slice(0,3).map(n=>String(n).padStart(2,"0")).join(":"));
+ if(typeof v==="boolean")return v?"Sí":"No";
+ if(typeof v==="string"&&/^Date\(/.test(v)){const f=accDate(v),n=v.match(/\d+/g)||[];if(!f)return esc(v);return esc(n.length>3?f.toLocaleString("es-CO",{dateStyle:"short",timeStyle:"short"}):f.toLocaleDateString("es-CO"))}
+ const t=String(v).trim();
+ if(/^https?:\/\//i.test(t))return '<a href="'+esc(t)+'" target="_blank" rel="noopener">Abrir</a>';
+ return esc(t);
+}
+function busFields(f){
+ return f.map((v,i)=>{const x=busFmt(v);if(!x)return "";return `<div><small>${esc(AC.cols[i]||("Dato "+(i+1)))}</small><b>${x}</b></div>`}).join("");
+}
+function busBuild(){
+ const db=$("#db");if(!db||db.dataset.b)return;db.dataset.b="1";
+ db.innerHTML='<div class="card"><label for="bq">Buscar por nombre o cédula</label><input id="bq" type="search" placeholder="Nombre o número de documento" autocomplete="off" inputmode="search"><div class="mu" id="bn" style="margin-top:6px"></div></div><div id="br"></div>';
+ busRender();
+}
+function busPeople(){
+ const m=new Map(),dk=f=>String(f[2]==null?"":f[2]).trim();
+ AC.all.forEach(f=>{const d=dk(f),k=d||("n:"+busNorm(f[3]));if(!k||k==="n:")return;
+  let p=m.get(k);if(!p){p={d:d,rows:[],outs:[]};m.set(k,p)}p.rows.push(f)});
+ AC.allS.forEach(f=>{const p=m.get(dk(f));if(p)p.outs.push(f)});
+ const T=f=>+accDate(f[0])||0;
+ m.forEach(p=>{p.rows.sort((a,b)=>T(b)-T(a));p.outs.sort((a,b)=>T(b)-T(a))});
+ return [...m.values()];
+}
+function busRender(){
+ const r=$("#br"),n=$("#bn"),inp=$("#bq");if(!r||!inp)return;
+ const raw=inp.value.trim(),q=busNorm(raw),qn=busNum(raw),isNum=/^[\d.\s-]+$/.test(raw);
+ if(!AC.all.length){n.textContent=AC.sync==="--"?"Cargando registros…":"No hay registros de ingreso.";r.innerHTML="";return}
+ if(isNum?qn.length<3:q.length<2){n.textContent=AC.all.length+" ingresos registrados · escriba al menos 2 letras o 3 dígitos";r.innerHTML="";return}
+ const toks=q.split(/\s+/).filter(Boolean);
+ let L=busPeople().filter(p=>isNum?busNum(p.d).includes(qn):(()=>{const nm=busNorm(p.rows.map(x=>x[3]).join(" "));return toks.every(t=>nm.includes(t))})());
+ L.sort((a,b)=>(+accDate(b.rows[0][0])||0)-(+accDate(a.rows[0][0])||0));
+ const tot=L.length;L=L.slice(0,30);
+ n.textContent=tot?(tot+" persona"+(tot>1?"s":"")+" encontrada"+(tot>1?"s":"")+(tot>30?" · mostrando las 30 más recientes":"")):"Sin resultados";
+ r.innerHTML=L.map((p,ix)=>{
+  const f=p.rows[0],ti=+accDate(f[0])||0,to=p.outs.length?(+accDate(p.outs[0][0])||0):0;
+  const stt=(p.outs.length&&to>=ti)?'<span class="pill gy">Salió '+busFmt(p.outs[0][0])+'</span>':accHoy(f[0])?'<span class="pill ok">Dentro</span>':'<span class="pill wn">Sin salida registrada</span>';
+  const key=p.d||("n:"+busNorm(f[3])),op=AC.bo.has(key)?" open":"";
+  const hist=p.rows.length>1?`<details data-bk="${esc(key)}"${op}><summary>Historial de ingresos (${p.rows.length})</summary>${p.rows.map(x=>`<div class="nv"><b>${busFmt(x[0])}</b><div class="mg">${busFields(x.slice(1))}</div></div>`).join("")}${p.outs.length?`<div class="mu" style="margin-top:8px">Salidas registradas: ${p.outs.map(x=>busFmt(x[0])).join(" · ")}</div>`:""}</details>`:(p.outs.length?`<div class="mu" style="margin-top:8px">Salidas registradas: ${p.outs.map(x=>busFmt(x[0])).join(" · ")}</div>`:"");
+  return `<div class="bp"><div class="rh"><div style="flex:1"><h3>${esc(f[3]||"-")}</h3><div class="mu">Cédula: ${esc(p.d||"-")} · ${esc(f[4]||"-")}</div></div>${stt}</div><div class="mg" style="margin-top:10px">${busFields(f)}</div>${hist}</div>`}).join("");
+}
+document.addEventListener("input",e=>{if(e.target&&e.target.id==="bq")busRender()});
+document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.dataset&&d.dataset.bk){d.open?AC.bo.add(d.dataset.bk):AC.bo.delete(d.dataset.bk)}},true);
 
 function renderDash(){
  if(!AUTH){ED.on=false;$("#dash").innerHTML=`<div class="card"><b>Dashboard – acceso restringido</b><p class="mu">Ingrese con su correo y contraseña de supervisor/administrador.</p><div class="g"><div><label>Correo</label><input id="le" type="email"></div><div><label>Contraseña</label><input id="lp" type="password"></div></div><div class="row" style="margin-top:10px"><button class="btn pr" id="li">Ingresar</button></div><div id="lm"></div></div>`;return}
