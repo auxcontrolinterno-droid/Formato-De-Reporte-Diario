@@ -292,6 +292,9 @@ async function flush(){
 
 /* ===== DASHBOARD: sub-pestañas + Control de acceso ===== */
 let DT="rep";
+/* ===== MODO VIGILANTE (sin cuenta): solo Control de acceso + Buscar ingresos ===== */
+const GUARD_PIN="1234"; /* <-- CAMBIE ESTA CLAVE por la que usarán los vigilantes */
+let GUARD=false;try{GUARD=localStorage.getItem("gd")==="1"}catch(e){}
 const AC={
  U1:"https://docs.google.com/spreadsheets/d/1nf60amlLaZTUmXu9k-IE7DTyl8RmCARJOdP5wuBjMjw/gviz/tq?gid=2145380964&tqx=out:json",
  U2:"https://docs.google.com/spreadsheets/d/1nf60amlLaZTUmXu9k-IE7DTyl8RmCARJOdP5wuBjMjw/gviz/tq?gid=366969943&tqx=out:json",
@@ -299,7 +302,14 @@ const AC={
  FORM:"https://docs.google.com/forms/d/e/1FAIpQLSedPNuvXarpvh2t9ssrBUa3AEPI8ZIu20CTpZa9tGcklEGKwQ/formResponse"
 };
 function dShell(){
- if($("#dp"))return;
+ const m=AUTH?"s":"g";
+ if($("#dp")&&$("#dash").dataset.m===m)return;
+ $("#dash").dataset.m=m;
+ if(m==="g"){
+  if(DT==="rep")DT="acc";
+  $("#dash").innerHTML='<div class="dsub"><button data-dt="acc">Control de acceso</button><button data-dt="bus">Buscar ingresos</button></div><div id="dp" class="hide"></div><div id="da" class="hide"></div><div id="db" class="hide"></div><div class="row" style="margin-top:14px"><button class="btn" id="gx">Salir de vigilancia</button></div>';
+  dTab(DT);return;
+ }
  $("#dash").innerHTML='<div class="dsub"><button data-dt="rep">Reportes</button><button data-dt="acc">Control de acceso</button><button data-dt="bus">Buscar ingresos</button></div><div id="dp"></div><div id="da" class="hide"></div><div id="db" class="hide"></div>';
  dTab(DT);
 }
@@ -312,8 +322,11 @@ function dTab(t){
  if(t=="acc"||t=="bus"){accBuild();accLoad(true)}
  if(t=="bus")busBuild();
 }
+function guardIn(){const v=($("#gp")||{}).value||"";if(v===GUARD_PIN){GUARD=true;try{localStorage.setItem("gd","1")}catch(e){}renderDash()}else{const m=$("#gm");if(m)m.innerHTML='<div class="msg err">Clave incorrecta.</div>'}}
+document.addEventListener("click",e=>{const t=e.target;if(t&&t.id==="gi")guardIn();if(t&&t.id==="gx"){GUARD=false;try{localStorage.removeItem("gd")}catch(x){}renderDash()}});
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target&&e.target.id==="gp")guardIn()});
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-dt]");if(b&&$("#dp"))dTab(b.dataset.dt)});
-function accVis(){return AUTH&&(DT=="acc"||DT=="bus")&&$("#da")&&!$("#dash").classList.contains("hide")&&!document.hidden}
+function accVis(){return (AUTH||GUARD)&&(DT=="acc"||DT=="bus")&&$("#da")&&!$("#dash").classList.contains("hide")&&!document.hidden}
 function accBuild(){
  const da=$("#da");if(!da||da.dataset.b)return;da.dataset.b="1";
  da.innerHTML=`<div class="k">
@@ -468,7 +481,8 @@ document.addEventListener("input",e=>{if(e.target&&e.target.id==="bq")busRender(
 document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.dataset&&d.dataset.bk){d.open?AC.bo.add(d.dataset.bk):AC.bo.delete(d.dataset.bk)}},true);
 
 function renderDash(){
- if(!AUTH){ED.on=false;$("#dash").innerHTML=`<div class="card"><b>Dashboard – acceso restringido</b><p class="mu">Ingrese con su correo y contraseña de supervisor/administrador.</p><div class="g"><div><label>Correo</label><input id="le" type="email"></div><div><label>Contraseña</label><input id="lp" type="password"></div></div><div class="row" style="margin-top:10px"><button class="btn pr" id="li">Ingresar</button></div><div id="lm"></div></div>`;return}
+ if(!AUTH&&GUARD){ED.on=false;dShell();return}
+ if(!AUTH){ED.on=false;$("#dash").innerHTML=`<div class="card"><b>Dashboard – acceso restringido</b><p class="mu">Ingrese con su correo y contraseña de supervisor/administrador.</p><div class="g"><div><label>Correo</label><input id="le" type="email"></div><div><label>Contraseña</label><input id="lp" type="password"></div></div><div class="row" style="margin-top:10px"><button class="btn pr" id="li">Ingresar</button></div><div id="lm"></div></div><div class="card" style="margin-top:12px"><b>Vigilancia</b><p class="mu">Clave para ver el Control de acceso y dar salidas.</p><input id="gp" type="password" inputmode="numeric" autocomplete="off" placeholder="Clave"><div class="row" style="margin-top:10px"><button class="btn pr" id="gi">Entrar como vigilante</button></div><div id="gm"></div></div>`;return}
  dShell();
  const f=($("#fl")||{}).value||"",ft=($("#ft")||{}).value||"";
  let L=all.filter(d=>(!f||d.date==f)&&(!ft||d.type==ft)).sort((x,y)=>x.date<y.date?1:x.date>y.date?-1:(y.createdAt||0)-(x.createdAt||0));
