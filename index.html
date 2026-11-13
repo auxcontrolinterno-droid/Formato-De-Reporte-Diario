@@ -899,4 +899,75 @@ onAuthStateChanged(auth,u=>{
  unsub=onSnapshot(query(collection(db,"reportes"),orderBy("createdAt","desc"),limit(300)),s=>setAll(s.docs.map(d=>d.data()),true),()=>setAll([],false));
 });
 </script>
+<style>
+.dsub{overflow-x:auto}.dsub button{white-space:nowrap}
+.xg{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.xg label{display:block;font-size:12px;color:var(--mu);margin:0 0 2px}
+.xg input,.xg select,.xg textarea{width:100%;font:inherit;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--sf);color:var(--tx)}
+.xi{border:1px solid var(--bd);border-left:5px solid var(--pr);border-radius:10px;padding:10px;margin:8px 0;background:var(--sf)}
+.xi.alta,.xi.critica{border-left-color:var(--rd)}.xi.media{border-left-color:#e0a21b}
+.xp{display:inline-block;padding:1px 8px;border-radius:99px;font-size:12px;font-weight:700;background:var(--bd);color:var(--tx)}
+.xp.bad{background:var(--rb);color:var(--rd)}.xp.ok{background:#e1f5e8;color:#1c7a3f}
+.xs{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 0}.xs .btn{padding:5px 9px;font-size:13px}
+</style>
+<script type="module">
+import {getApp} from "https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js";
+import {getAuth,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
+import {getFirestore,doc,setDoc,deleteDoc,collection,query,orderBy,onSnapshot} from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+/* ===== Módulos de supervisión: SOLO con cuenta (no anónimo / no vigilante) ===== */
+const app=getApp(),auth=getAuth(app),db=getFirestore(app);
+const C={inc:"incidentes",tur:"turnos",eq:"equipos",fa:"fallas"},D={inc:[],tur:[],eq:[],fa:[]};
+const Q=s=>document.querySelector(s),E=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const V=id=>(Q("#"+id)||{}).value||"",td=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+const addDays=(d,n)=>{const x=new Date(d+"T12:00");x.setDate(x.getDate()+n);return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0")};
+const save=(c,o,id)=>setDoc(doc(db,C[c],id||Date.now()+"_"+Math.random().toString(36).slice(2,6)),Object.assign({},o,{updatedAt:Date.now(),by:(auth.currentUser||{}).email||""}),{merge:true}).catch(e=>alert("No se pudo guardar: "+e.message));
+const del=(c,id)=>confirm("¿Eliminar este registro?")&&deleteDoc(doc(db,C[c],id));
+const F=(l,i,t,x)=>`<div><label>${l}</label>${t=="sel"?`<select id="${i}">${x.map(o=>`<option>${o}</option>`).join("")}</select>`:t=="ta"?`<textarea id="${i}" rows="2"></textarea>`:`<input id="${i}" type="${t}" ${x||""}>`}</div>`;
+const pill=(t,k)=>`<span class="xp ${k||""}">${E(t)}</span>`;
+const fmt=d=>d?d.split("-").reverse().join("/"):"—";
+const SEV=["critica","alta","media","baja"],TURN=["Mañana (6:00–14:00)","Tarde (14:00–22:00)","Noche (22:00–6:00)"];
+/* ---------- Incidentes ---------- */
+function bInc(){return `<div class="k" id="xi-k"></div><details class="card"><summary><b>+ Nuevo incidente</b></summary><div class="xg" style="margin-top:8px">${F("Fecha","xi-f","date")}${F("Hora","xi-h","time")}${F("Título","xi-t","text")}${F("Categoría","xi-c","sel",["Robo/hurto","Intrusión","Accidente","Daño a infraestructura","Conducta","Emergencia","Otro"])}${F("Severidad","xi-s","sel",SEV)}${F("Zona / lugar","xi-z","text")}${F("Responsable","xi-r","text")}${F("Fecha límite","xi-l","date")}</div><div class="xg" style="margin-top:8px">${F("Descripción","xi-d","ta")}</div><div class="row" style="margin-top:8px"><button class="btn pr" data-x="inc-save">Guardar incidente</button></div></details><div class="row"><label class="mu">Mostrar</label><select id="xi-v" data-x="inc-r"><option value="a">Abiertos</option><option value="c">Cerrados</option><option value="t">Todos</option></select></div><div id="xi-list"></div>`}
+function rInc(){const n=td(),a=D.inc.filter(i=>i.estado!="Cerrado"),vf=V("xi-v")||"a";
+ Q("#xi-k").innerHTML=`<div><small>Abiertos</small><b>${a.length}</b></div><div class="k2"><small>Críticos/altos</small><b>${a.filter(i=>/critica|alta/.test(i.sev)).length}</b></div><div><small>Vencidos</small><b>${a.filter(i=>i.limite&&i.limite<n).length}</b></div>`;
+ const L=D.inc.filter(i=>vf=="t"||(vf=="a")==(i.estado!="Cerrado")).sort((x,y)=>(x.estado=="Cerrado")-(y.estado=="Cerrado")||SEV.indexOf(x.sev)-SEV.indexOf(y.sev)||(y.fecha+y.hora).localeCompare(x.fecha+x.hora));
+ Q("#xi-list").innerHTML=L.map(i=>`<div class="xi ${i.sev}"><b>${E(i.titulo)}</b> ${pill(i.sev,/critica|alta/.test(i.sev)?"bad":"")} ${pill(i.estado,i.estado=="Cerrado"?"ok":"")}${i.limite&&i.limite<n&&i.estado!="Cerrado"?" "+pill("Vencido","bad"):""}<div class="mu">${fmt(i.fecha)} ${E(i.hora||"")} · ${E(i.cat)} · ${E(i.zona||"sin zona")} · Resp.: ${E(i.resp||"sin asignar")}${i.limite?" · Límite: "+fmt(i.limite):""}</div>${i.desc?`<div>${E(i.desc)}</div>`:""}${i.cierre?`<div class="mu">Cierre: ${E(i.cierre)}</div>`:""}<div class="xs">${i.estado=="Abierto"?`<button class="btn" data-x="inc-st" data-id="${i.id}" data-v="En proceso">En proceso</button>`:""}${i.estado!="Cerrado"?`<button class="btn" data-x="inc-close" data-id="${i.id}">Cerrar</button>`:`<button class="btn" data-x="inc-st" data-id="${i.id}" data-v="Abierto">Reabrir</button>`}<button class="btn" data-x="del" data-c="inc" data-id="${i.id}">Eliminar</button></div></div>`).join("")||'<p class="mu">Sin incidentes.</p>'}
+/* ---------- Turnos ---------- */
+const tkey=t=>t.fecha+TURN.indexOf(t.turno);
+function curKey(){const d=new Date(),h=d.getHours(),s=h>=6&&h<14?0:h>=14&&h<22?1:2;return (h<6?addDays(td(),-1):td())+s}
+function bTur(){return `<details class="card"><summary><b>+ Asignar turno</b></summary><div class="xg" style="margin-top:8px">${F("Fecha","xt-f","date")}${F("Turno","xt-t","sel",TURN)}${F("Persona","xt-p","text",'list="xt-dl"')}<datalist id="xt-dl"></datalist>${F("Puesto / zona","xt-z","text")}${F("Nota","xt-n","text")}</div><div class="row" style="margin-top:8px"><button class="btn pr" data-x="tur-save">Guardar turno</button></div></details><div id="xt-list"></div>`}
+function rTur(){const k=curKey(),S=D.tur.slice().sort((a,b)=>tkey(a).localeCompare(tkey(b))),row=t=>`<div class="xi"><b>${E(t.persona)}</b> ${pill(t.turno.split(" ")[0])}<div class="mu">${fmt(t.fecha)} · ${E(t.turno)} · ${E(t.puesto||"sin puesto")}${t.nota?" · "+E(t.nota):""}</div><div class="xs"><button class="btn" data-x="del" data-c="tur" data-id="${t.id}">Eliminar</button></div></div>`,sec=(h,a)=>`<h3>${h} (${a.length})</h3>${a.map(row).join("")||'<p class="mu">Nadie.</p>'}`;
+ Q("#xt-dl").innerHTML=[...new Set(D.tur.map(t=>t.persona))].map(n=>`<option value="${E(n)}">`).join("");
+ Q("#xt-list").innerHTML=sec("🟢 De turno ahora",S.filter(t=>tkey(t)==k))+sec("🔜 Próximos turnos",S.filter(t=>tkey(t)>k))+sec("🕘 Estuvieron (recientes)",S.filter(t=>tkey(t)<k).reverse().slice(0,40))}
+/* ---------- Inventario ---------- */
+function bEq(){return `<div class="k" id="xe-k"></div><details class="card"><summary><b>+ Nuevo equipo</b></summary><div class="xg" style="margin-top:8px">${F("Tipo","xe-t","sel",["Cámara","Radio","Alarma","Cerradura"])}${F("Código / serie","xe-c","text")}${F("Marca / modelo","xe-m","text")}${F("Ubicación","xe-u","text")}${F("Frecuencia mant. (días)","xe-q","number",'min="0" placeholder="90"')}${F("Próximo mantenimiento","xe-p","date")}</div><div class="row" style="margin-top:8px"><button class="btn pr" data-x="eq-save">Guardar equipo</button></div></details><h3>Equipos</h3><div class="row"><select id="xe-v" data-x="eq-r"><option value="">Todos los tipos</option><option>Cámara</option><option>Radio</option><option>Alarma</option><option>Cerradura</option></select></div><div id="xe-list"></div><h3>Fallas abiertas</h3><div id="xe-fa"></div><h3>Mantenimientos programados</h3><div id="xe-mt"></div>`}
+function rEq(){const n=td(),eq=D.eq,fa=D.fa.filter(f=>f.estado!="Resuelta"),vt=V("xe-v"),by=Object.fromEntries(eq.map(e=>[e.id,e])),ov=e=>e.prox&&e.prox<n;
+ Q("#xe-k").innerHTML=`<div><small>Equipos</small><b>${eq.length}</b></div><div class="k2"><small>Fallas abiertas</small><b>${fa.length}</b></div><div><small>Mant. vencidos</small><b>${eq.filter(ov).length}</b></div>`;
+ Q("#xe-list").innerHTML=eq.filter(e=>!vt||e.tipo==vt).sort((a,b)=>(a.tipo+a.codigo).localeCompare(b.tipo+b.codigo)).map(e=>`<div class="xi ${e.estado=="Operativo"?"":"alta"}"><b>${E(e.tipo)} ${E(e.codigo)}</b> ${pill(e.estado,e.estado=="Operativo"?"ok":"bad")}${ov(e)?" "+pill("Mant. vencido","bad"):""}<div class="mu">${E(e.modelo||"")} · ${E(e.ubic||"sin ubicación")} · Último mant.: ${fmt(e.ult)} · Próximo: ${fmt(e.prox)}</div><div class="xs"><button class="btn" data-x="eq-fail" data-id="${e.id}">Reportar falla</button><button class="btn" data-x="eq-mnt" data-id="${e.id}">Mantenimiento hecho</button><button class="btn" data-x="del" data-c="eq" data-id="${e.id}">Eliminar</button></div></div>`).join("")||'<p class="mu">Sin equipos.</p>';
+ Q("#xe-fa").innerHTML=fa.sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(f=>`<div class="xi alta"><b>${E((by[f.eq]||{}).tipo||"")} ${E((by[f.eq]||{}).codigo||f.eqn||"")}</b> ${pill("Abierta","bad")}<div class="mu">${fmt(f.fecha)}</div><div>${E(f.desc)}</div><div class="xs"><button class="btn" data-x="fa-res" data-id="${f.id}">Marcar resuelta</button></div></div>`).join("")||'<p class="mu">Sin fallas abiertas.</p>';
+ Q("#xe-mt").innerHTML=eq.filter(e=>e.prox).sort((a,b)=>a.prox.localeCompare(b.prox)).map(e=>`<div class="xi ${ov(e)?"alta":""}"><b>${E(e.tipo)} ${E(e.codigo)}</b> ${ov(e)?pill("Vencido","bad"):e.prox<=addDays(n,7)?pill("Esta semana"):""}<div class="mu">${fmt(e.prox)} · ${E(e.ubic||"")}</div></div>`).join("")||'<p class="mu">Sin mantenimientos programados.</p>'}
+/* ---------- Acciones ---------- */
+document.addEventListener("click",e=>{const b=e.target.closest("[data-x]");if(!b||b.tagName=="SELECT")return;const x=b.dataset.x,id=b.dataset.id,g=(c,i)=>D[c].find(o=>o.id==i);
+ if(x=="inc-save"){if(!V("xi-t"))return alert("Escriba un título.");save("inc",{titulo:V("xi-t"),fecha:V("xi-f")||td(),hora:V("xi-h"),cat:V("xi-c"),sev:V("xi-s"),zona:V("xi-z"),resp:V("xi-r"),limite:V("xi-l"),desc:V("xi-d"),estado:"Abierto",createdAt:Date.now()});["xi-t","xi-z","xi-r","xi-d","xi-l"].forEach(i=>Q("#"+i).value="");Q("#xi-t").closest("details").open=false}
+ if(x=="inc-st")save("inc",{estado:b.dataset.v,cierre:""},id);
+ if(x=="inc-close"){const n=prompt("Nota de cierre (qué se hizo):");if(n!==null)save("inc",{estado:"Cerrado",cierre:n,cerradoEl:td()},id)}
+ if(x=="tur-save"){if(!V("xt-p")||!V("xt-f"))return alert("Indique fecha y persona.");save("tur",{fecha:V("xt-f"),turno:V("xt-t"),persona:V("xt-p").trim(),puesto:V("xt-z"),nota:V("xt-n")});Q("#xt-n").value=""}
+ if(x=="eq-save"){if(!V("xe-c"))return alert("Indique el código.");save("eq",{tipo:V("xe-t"),codigo:V("xe-c"),modelo:V("xe-m"),ubic:V("xe-u"),freq:+V("xe-q")||0,prox:V("xe-p"),ult:"",estado:"Operativo"});["xe-c","xe-m","xe-u","xe-q","xe-p"].forEach(i=>Q("#"+i).value="");Q("#xe-c").closest("details").open=false}
+ if(x=="eq-fail"){const d=prompt("Describa la falla:");if(d){save("fa",{eq:id,fecha:td(),desc:d,estado:"Abierta"});save("eq",{estado:"Con falla"},id)}}
+ if(x=="eq-mnt"){const q=g("eq",id),n=prompt("Notas del mantenimiento (opcional):");if(n===null)return;save("eq",{ult:td(),prox:q.freq?addDays(td(),q.freq):q.prox,estado:"Operativo",notaMant:n},id)}
+ if(x=="fa-res"){const f=g("fa",id);save("fa",{estado:"Resuelta",resueltaEl:td()},id);if(f&&!D.fa.some(o=>o.eq==f.eq&&o.id!=id&&o.estado!="Resuelta"))save("eq",{estado:"Operativo"},f.eq)}
+ if(x=="del")del(b.dataset.c,id)});
+document.addEventListener("change",e=>{if(e.target.id=="xi-v")rInc();if(e.target.id=="xe-v")rEq()});
+/* ---------- Pestañas (solo supervisores) ---------- */
+const T={inc:["Incidentes",bInc,rInc],tur:["Turnos",bTur,rTur],eq:["Inventario",bEq,rEq]},R={inc:"inc",tur:"tur",eq:"eq"};let ULS=[];
+function live(on){ULS.forEach(f=>f());ULS=[];if(!on)return;Object.keys(C).forEach(c=>ULS.push(onSnapshot(query(collection(db,C[c]),orderBy("updatedAt","desc")),s=>{D[c]=s.docs.map(d=>Object.assign({id:d.id},d.data()));draw()},()=>{})))}
+function draw(){["inc","tur","eq"].forEach(t=>{if(Q("#dx-"+t)&&!Q("#dx-"+t).classList.contains("hide"))T[t][2]()})}
+onAuthStateChanged(auth,u=>live(!!u&&!u.isAnonymous));
+const _shell=window.dShell,_tab=window.dTab;
+window.dShell=function(){_shell();const s=Q(".dsub");if(!AUTH||!s||Q('[data-dt="inc"]'))return;
+ Object.keys(T).forEach(t=>{s.insertAdjacentHTML("beforeend",`<button data-dt="${t}">${T[t][0]}</button>`);Q("#dash").insertAdjacentHTML("beforeend",`<div id="dx-${t}" class="hide">${T[t][1]()}</div>`)});
+ const f=Q("#xt-f");if(f)f.value=td();const g=Q("#xi-f");if(g)g.value=td();window.dTab(DT)};
+window.dTab=function(t){_tab(t);Object.keys(T).forEach(k=>{const p=Q("#dx-"+k);if(p)p.classList.toggle("hide",k!=t)});if(T[t])T[t][2]()};
+</script>
+
 <script>if("serviceWorker" in navigator&&location.protocol!=="file:"){window.addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").catch(()=>{})})}</script></body></html>
