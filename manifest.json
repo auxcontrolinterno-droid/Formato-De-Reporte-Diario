@@ -1,6 +1,6 @@
 {
-  "name": "Reporte diario de novedades – Altamira International School",
-  "short_name": "DESIAL",
+  "name": "Reporte diario de novedades e infraestructura – Altamira International School",
+  "short_name": "DESIAL V1.0",
   "description": "Reportes de novedades, dashboard y control de acceso",
   "id": "./index.html",
   "start_url": "./index.html",
