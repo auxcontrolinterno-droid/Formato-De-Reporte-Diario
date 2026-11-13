@@ -1,7 +1,7 @@
 /* Service worker: permite instalar la app y abrir la pantalla aunque no haya señal.
    Los datos en vivo (Firebase, hojas de Google) siempre van a la red. */
-const V = "altamira-v1";
-const SHELL = ["./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
+const V = "altamira-v2";
+const SHELL = ["./", "./index.html", "./manifest.json", "./icon-192x192.png", "./icon-512x512.png"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(V).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
