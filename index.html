@@ -1035,4 +1035,59 @@ window.dShell=function(){_shell();const s=Q(".dsub");if(!AUTH||!s||Q('[data-dt="
 window.dTab=function(t){_tab(t);Object.keys(T).forEach(k=>{const p=Q("#dx-"+k);if(p)p.classList.toggle("hide",k!=t)});if(T[t])T[t][2]()};
 </script>
 
+<style>
+#dnav,#dmenu,#dmask{display:none}
+@media(max-width:760px){
+ #dash .dsub{display:none!important}
+ #dnav{display:flex;align-items:center;gap:12px;margin:0 0 12px;padding:6px 0;border-bottom:2px solid var(--bd)}
+ #dnav button{border:0;background:var(--lb);color:var(--pr);width:44px;height:44px;border-radius:10px;font-size:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;flex:none}
+ #dnav button i{display:block;width:22px;height:3px;border-radius:2px;background:currentColor}
+ #dnav b{font-size:17px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ #dmask{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;opacity:0;pointer-events:none;transition:opacity .2s;display:block}
+ #dmenu{position:fixed;top:0;bottom:0;left:0;width:min(82vw,320px);background:var(--sf);color:var(--tx);z-index:1001;transform:translateX(-102%);transition:transform .22s;display:flex;flex-direction:column;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);box-shadow:4px 0 20px rgba(0,0,0,.25);overflow-y:auto}
+ #dmenu h4{margin:0;padding:18px 20px 10px;font-size:13px;letter-spacing:.5px;text-transform:uppercase;color:var(--mu)}
+ #dmenu button{border:0;background:none;color:var(--tx);font:inherit;font-size:16px;font-weight:600;text-align:left;padding:15px 20px;border-left:4px solid transparent;cursor:pointer}
+ #dmenu button.on{background:var(--lb);color:var(--pr);border-left-color:var(--sig)}
+ body.dm-open #dmask{opacity:1;pointer-events:auto}
+ body.dm-open #dmenu{transform:none}
+}
+@media print{#dnav,#dmenu,#dmask{display:none!important}}
+</style>
+<script>
+(function(){
+ const $q=s=>document.querySelector(s);
+ function mk(){
+  if($q("#dmenu"))return;
+  const m=document.createElement("div");m.id="dmenu";m.setAttribute("role","dialog");m.setAttribute("aria-label","Secciones");
+  const k=document.createElement("div");k.id="dmask";
+  k.addEventListener("click",close);
+  m.addEventListener("click",e=>{const b=e.target.closest("[data-go]");if(!b)return;close();window.dTab(b.dataset.go);window.scrollTo(0,0)});
+  document.body.append(k,m);
+  document.addEventListener("keydown",e=>{if(e.key==="Escape")close()});
+ }
+ function open(){
+  mk();
+  const m=$q("#dmenu"),cur=(window.DT||"");
+  m.innerHTML="<h4>Secciones</h4>"+Array.from(document.querySelectorAll("#dash .dsub button[data-dt]")).map(b=>'<button data-go="'+b.dataset.dt+'"'+(b.classList.contains("on")?' class="on"':'')+'>'+b.textContent+'</button>').join("");
+  document.body.classList.add("dm-open");
+ }
+ function close(){document.body.classList.remove("dm-open")}
+ function sync(){
+  const sub=$q("#dash .dsub");if(!sub)return;
+  let bar=$q("#dnav");
+  if(!bar||!sub.parentNode.contains(bar)){
+   if(bar)bar.remove();
+   bar=document.createElement("div");bar.id="dnav";
+   bar.innerHTML='<button type="button" aria-label="Abrir menú de secciones"><i></i><i></i><i></i></button><b></b>';
+   bar.firstChild.addEventListener("click",open);
+   sub.parentNode.insertBefore(bar,sub);
+  }
+  const on=sub.querySelector("button.on");bar.querySelector("b").textContent=on?on.textContent:"Menú";
+ }
+ const prev=window.dTab;
+ window.dTab=function(t){const r=prev.apply(this,arguments);try{sync()}catch(e){}return r};
+ try{sync()}catch(e){}
+})();
+</script>
+
 <script>if("serviceWorker" in navigator&&location.protocol!=="file:"){window.addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").catch(()=>{})})}</script></body></html>
