@@ -313,10 +313,8 @@ let DT="rep";
 const GUARD_PIN="1234"; /* <-- CAMBIE ESTA CLAVE por la que usarán los vigilantes */
 let GUARD=false;try{GUARD=localStorage.getItem("gd")==="1"}catch(e){}
 const AC={
- U1:"https://docs.google.com/spreadsheets/d/1nf60amlLaZTUmXu9k-IE7DTyl8RmCARJOdP5wuBjMjw/gviz/tq?gid=2145380964&tqx=out:json",
- U2:"https://docs.google.com/spreadsheets/d/1nf60amlLaZTUmXu9k-IE7DTyl8RmCARJOdP5wuBjMjw/gviz/tq?gid=366969943&tqx=out:json",
  hash:"",busy:false,sync:"--",ing:[],sal:[],pend:new Map(),cur:{},all:[],allS:[],cols:[],bo:new Set(),
- FORM:"https://docs.google.com/forms/d/e/1FAIpQLSedPNuvXarpvh2t9ssrBUa3AEPI8ZIu20CTpZa9tGcklEGKwQ/formResponse"
+ on:false,ok:false,rev:0,raw:[[],[]]
 };
 function dShell(){
  const m=AUTH?"s":"g";
@@ -361,13 +359,22 @@ function accBuild(){
    <div class="card"><div class="ac-h"><div class="ct">Proveedores dentro</div><span class="pill ok" id="acPn">0</span></div><div id="acLp"></div></div>
    <div class="card"><div class="ac-h"><div class="ct">Visitantes dentro</div><span class="pill ok" id="acVn">0</span></div><div id="acLv"></div></div>
   </div>
-  <div class="mu" style="margin-top:10px">Datos en vivo de la hoja de Control de Acceso · se actualiza cada 4 segundos.</div>`;
+  <div class="mu" style="margin-top:10px">Datos en vivo del Firebase de Control de Acceso · se actualiza en tiempo real.</div>`;
 }
-async function accSheet(u){
- const r=await fetch(u),t=await r.text();
- const j=JSON.parse(t.slice(t.indexOf("{"),t.lastIndexOf("}")+1));
-  const rows=j.table.rows.map(r=>(r.c||[]).map(x=>x?x.v:""));
- return Object.assign(rows,{cols:(j.table.cols||[]).map(c=>c.label||"")});
+const ACOLS=["Fecha","Tipo de documento","Documento","Nombre","Rol","Entidad","Teléfono","Placa","Contacto de emergencia","Tel. emergencia","Parentesco"];
+/* Fila = [fecha, tipoDoc, doc, nombre, rol, entidad, contacto, placa, emergNombre, emergTel, parentesco] */
+function accRow(m){const t=m.ts&&m.ts.toDate?m.ts.toDate():null;return [t,m.tipoDoc||"",m.doc||"",m.nombre||"",m.rol||"",m.entidad||"",m.contacto||"",m.placa||"",m.emergenciaNombre||"",m.emergencia||"",m.parentesco||""]}
+function accHoyStr(){const d=new Date(),p=n=>String(n).padStart(2,"0");return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())}
+function accStart(){
+ if(AC.on)return;
+ if(!window.FBA){accSet("acEs","🟡 Cargando");return}
+ AC.on=true;
+ FBA.watch(l=>{
+  const a=[],s=[];l.forEach(m=>{const r=accRow(m);(String(m.tipo).toUpperCase()==="SALIDA"?s:a).push(r)});
+  a.cols=ACOLS;AC.raw=[a,s];AC.ok=true;AC.rev++;
+  AC.sync=new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+  accLoad(true);
+ },e=>{AC.on=false;AC.ok=false;accSet("acEs","🔴 Error");console.log(e);accMsg("No se pudo leer Control de Acceso: "+(e.code||e.message),"err")});
 }
 function accDate(v){
  if(!v)return null;
@@ -381,15 +388,16 @@ function accHoy(v){const f=accDate(v);if(!f)return false;const h=new Date();retu
 function accHora(v){const f=accDate(v);return f?f.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}):"--"}
 function accSet(id,v){const e=$("#"+id);if(e)e.textContent=v}
 async function accLoad(force){
- if(AC.busy||!$("#da"))return;
+ if(!$("#da"))return;
+ if(!AC.ok){accStart();return}
+ if(AC.busy)return;
  AC.busy=true;
  try{
-  const [a,s]=await Promise.all([accSheet(AC.U1),accSheet(AC.U2)]);
-  if(!$("#da")||!$("#acIn"))return;
-  accSet("acEs","🟢 En línea");
-  AC.sync=new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"});accSet("acSy","Sync: "+AC.sync);
-  const h=JSON.stringify([a,s]);
-  AC.all=a;AC.allS=s;AC.cols=a.cols||[];
+  if(!$("#acIn"))return;
+  const [a,s]=AC.raw;
+  accSet("acEs","🟢 En línea");accSet("acSy","Sync: "+AC.sync);
+  const h=AC.rev+"|"+accHoyStr();
+  AC.all=a;AC.allS=s;AC.cols=a.cols||ACOLS;
   const ing=a.filter(f=>accHoy(f[0])),sal=s.filter(f=>accHoy(f[0]));
   const pc=accPrune(sal);
   if(!force&&h===AC.hash&&!pc)return;
@@ -424,7 +432,7 @@ function accDentro(ing,sal,rol,lista,kpi,cn,vacio,test){
  sal.forEach(f=>{const d=String(f[2]).trim(),t=+accDate(f[0])||0;if(t>(last.get(d)||0))last.set(d,t)});
  ing.forEach(f=>{if(!test(f[4]))return;const d=String(f[2]).trim(),t=+accDate(f[0])||0;
   if((last.has(d)&&t<=last.get(d))||AC.pend.has(d))return;
-  const p=mp.get(d);if(!p||t>p.at)mp.set(d,{n:f[3],e:f[5]||"-",d:d,t:f[1]||"",r:String(f[4]||"").trim(),h:f[0],at:t})});
+  const p=mp.get(d);if(!p||t>p.at)mp.set(d,{n:f[3],e:f[5]||"-",d:d,t:f[1]||"",r:String(f[4]||"").trim(),h:f[0],at:t,c:f[6]||"",p:f[7]||""})});
  AC.cur[rol]=mp;
  const act=[...mp.values()];
  accSet(kpi,act.length);accSet(cn,act.length);
@@ -434,15 +442,18 @@ function accMsg(t,c){const e=$("#acMsg");if(!e)return;e.innerHTML='<div class="m
 async function accSalida(doc,rol){
  const x=(AC.cur[rol]||new Map()).get(doc);
  if(!x||AC.pend.has(doc))return;
+ if(!window.FBA){accMsg("Firebase de Control de Acceso aún no carga.","err");return}
  if(!await uiC("¿Registrar la salida de "+(x.n||doc)+"?"))return;
- const rf=(rol==="VISITANTE"?x.r:rol)||rol,q=encodeURIComponent,
-  url=AC.FORM+"?usp=pp_url&entry.349719305="+q(rf)+"&entry.232043619="+q(x.n||"")+"&entry.861901166="+q(x.t)+"&entry.1077137573="+q(x.d);
- const fr=document.createElement("iframe");fr.style.display="none";fr.src=url;document.body.appendChild(fr);
- setTimeout(()=>fr.remove(),4000);
+ const rf=String((rol==="VISITANTE"?x.r:rol)||rol).trim().toUpperCase();
  AC.pend.set(doc,Date.now());
  accRender();
- accMsg("✅ Salida enviada: "+(x.n||doc),"good");
- setTimeout(()=>accLoad(true),2500);
+ try{
+  await FBA.salida({rol:rf,tipoDoc:x.t,doc:x.d,nombre:x.n||"",entidad:x.e==="-"?"":x.e,placa:x.p,contacto:x.c,fechaDia:accHoyStr()});
+  accMsg("✅ Salida registrada: "+(x.n||doc),"good");
+ }catch(e){
+  console.log(e);AC.pend.delete(doc);accRender();
+  accMsg("No se pudo registrar la salida: "+(e.code||e.message),"err");
+ }
 }
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-ao]");if(b)accSalida(b.dataset.ao,b.dataset.ar)});
 setInterval(()=>{if(accVis())accLoad(false)},4000);
@@ -453,6 +464,7 @@ const busNorm=v=>String(v==null?"":v).normalize("NFD").replace(/[\u0300-\u036f]/
 const busNum=v=>String(v==null?"":v).replace(/\D/g,"");
 function busFmt(v){
  if(v===""||v==null)return "";
+ if(v instanceof Date)return isNaN(v)?"":esc(v.toLocaleString("es-CO",{dateStyle:"short",timeStyle:"short"}));
  if(Array.isArray(v))return esc(v.slice(0,3).map(n=>String(n).padStart(2,"0")).join(":"));
  if(typeof v==="boolean")return v?"Sí":"No";
  if(typeof v==="string"&&/^Date\(/.test(v)){const f=accDate(v),n=v.match(/\d+/g)||[];if(!f)return esc(v);return esc(n.length>3?f.toLocaleString("es-CO",{dateStyle:"short",timeStyle:"short"}):f.toLocaleDateString("es-CO"))}
@@ -871,10 +883,16 @@ const _go=()=>window.scrollTo(0,SCR);_go();setTimeout(_go,150);setTimeout(_go,60
 })();</script><script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js";
 import {getAuth,signInAnonymously,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
-import {getFirestore,doc,setDoc,getDoc,deleteDoc,writeBatch,collection,query,where,orderBy,limit,onSnapshot} from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+import {getFirestore,doc,setDoc,getDoc,deleteDoc,writeBatch,collection,query,where,orderBy,limit,onSnapshot,serverTimestamp} from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
 // ====== PEGUE AQUÍ SU CONFIGURACIÓN DE FIREBASE (Configuración del proyecto → Tus apps → Web) ======
 const firebaseConfig={apiKey:"AIzaSyBBzKShRsFtf65AXnMWOJlVl0hCAzcAyGY",authDomain:"formato-de-reporte-diario.firebaseapp.com",projectId:"formato-de-reporte-diario",storageBucket:"formato-de-reporte-diario.firebasestorage.app",messagingSenderId:"462001738427",appId:"1:462001738427:web:47010f745d50c40d324f9e"};
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);let unsub=null,lunsub=null,runs={};
+/* ===== Segunda app: Firebase del CONTROL DE ACCESO (colección "movimientos") ===== */
+const appA=initializeApp({apiKey:"AIzaSyBfdtZjGnnRW3W1B02kq_2YgshWuuSZr2o",authDomain:"control-de-acceso-b04a4.firebaseapp.com",projectId:"control-de-acceso-b04a4",storageBucket:"control-de-acceso-b04a4.firebasestorage.app",messagingSenderId:"212919729909",appId:"1:212919729909:web:0614f098a98616c4e2cfbc"},"acceso"),dbA=getFirestore(appA);let aun=null;
+window.FBA={
+ watch:(ok,err)=>{if(aun)return;aun=onSnapshot(query(collection(dbA,"movimientos"),orderBy("ts","desc"),limit(5000)),s=>ok(s.docs.map(d=>d.data({serverTimestamps:"estimate"}))),e=>{aun=null;err(e)})},
+ salida:o=>setDoc(doc(collection(dbA,"movimientos")),Object.assign({tipo:"SALIDA"},o,{ts:serverTimestamp()}))
+};
 const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"),defFrom=()=>{const d=new Date();return iso(new Date(d.getFullYear(),d.getMonth()-1,1))},PG=150;
 let RG={from:defFrom(),to:"",n:PG};
 function subRep(){if(unsub){unsub();unsub=null}const c=[];if(RG.from)c.push(where("date",">=",RG.from));if(RG.to)c.push(where("date","<=",RG.to));unsub=onSnapshot(query(collection(db,"reportes"),...c,orderBy("date","desc"),limit(RG.n)),s=>setAll(s.docs.map(d=>d.data()),true),()=>setAll([],false))}
