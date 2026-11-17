@@ -472,8 +472,8 @@ function busFmt(v){
  if(/^https?:\/\//i.test(t))return '<a href="'+esc(t)+'" target="_blank" rel="noopener">Abrir</a>';
  return esc(t);
 }
-function busFields(f){
- return f.map((v,i)=>{const x=busFmt(v);if(!x)return "";return `<div><small>${esc(AC.cols[i]||("Dato "+(i+1)))}</small><b>${x}</b></div>`}).join("");
+function busFields(f,o){
+ return f.map((v,i)=>{const x=busFmt(v);if(!x)return "";const j=i+(o||0);return `<div><small>${esc(AC.cols[j]||("Dato "+(j+1)))}</small><b>${x}</b></div>`}).join("");
 }
 function busBuild(){
  const db=$("#db");if(!db||db.dataset.b)return;db.dataset.b="1";
@@ -503,7 +503,7 @@ function busRender(){
   const f=p.rows[0],ti=+accDate(f[0])||0,to=p.outs.length?(+accDate(p.outs[0][0])||0):0;
   const stt=(p.outs.length&&to>=ti)?'<span class="pill gy">Salió '+busFmt(p.outs[0][0])+'</span>':accHoy(f[0])?'<span class="pill ok">Dentro</span>':'<span class="pill wn">Sin salida registrada</span>';
   const key=p.d||("n:"+busNorm(f[3])),op=AC.bo.has(key)?" open":"";
-  const hist=p.rows.length>1?`<details data-bk="${esc(key)}"${op}><summary>Historial de ingresos (${p.rows.length})</summary>${p.rows.map(x=>`<div class="nv"><b>${busFmt(x[0])}</b><div class="mg">${busFields(x.slice(1))}</div></div>`).join("")}${p.outs.length?`<div class="mu" style="margin-top:8px">Salidas registradas: ${p.outs.map(x=>busFmt(x[0])).join(" · ")}</div>`:""}</details>`:(p.outs.length?`<div class="mu" style="margin-top:8px">Salidas registradas: ${p.outs.map(x=>busFmt(x[0])).join(" · ")}</div>`:"");
+  const hist=p.rows.length>1?`<details data-bk="${esc(key)}"${op}><summary>Historial de ingresos (${p.rows.length})</summary>${p.rows.map(x=>`<div class="nv"><b>${busFmt(x[0])}</b><div class="mg">${busFields(x.slice(1),1)}</div></div>`).join("")}${p.outs.length?`<div class="mu" style="margin-top:8px">Salidas registradas: ${p.outs.map(x=>busFmt(x[0])).join(" · ")}</div>`:""}</details>`:(p.outs.length?`<div class="mu" style="margin-top:8px">Salidas registradas: ${p.outs.map(x=>busFmt(x[0])).join(" · ")}</div>`:"");
   return `<div class="bp"><div class="rh"><div style="flex:1"><h3>${esc(f[3]||"-")}</h3><div class="mu">Cédula: ${esc(p.d||"-")} · ${esc(f[4]||"-")}</div></div>${stt}</div><div class="mg" style="margin-top:10px">${busFields(f)}</div>${hist}</div>`}).join("");
 }
 document.addEventListener("input",e=>{if(e.target&&e.target.id==="bq")busRender()});
