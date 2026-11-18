@@ -948,10 +948,10 @@ import {initializeApp} from "https://www.gstatic.com/firebasejs/13.2.0/firebase-
 import {getAuth,signInAnonymously,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
 import {getFirestore,doc,setDoc,getDoc,deleteDoc,writeBatch,updateDoc,collection,query,where,orderBy,limit,onSnapshot,serverTimestamp} from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
 // ====== PEGUE AQUÍ SU CONFIGURACIÓN DE FIREBASE (Configuración del proyecto → Tus apps → Web) ======
-const firebaseConfig={apiKey:"AIzaSyBBzKShRsFtf65AXnMWOJlVl0hCAzcAyGY",authDomain:"formato-de-reporte-diario.firebaseapp.com",projectId:"formato-de-reporte-diario",storageBucket:"formato-de-reporte-diario.firebasestorage.app",messagingSenderId:"462001738427",appId:"1:462001738427:web:47010f745d50c40d324f9e"};
+const firebaseConfig={apiKey:"AIzaSyBfdtZjGnnRW3W1B02kq_2YgshWuuSZr2o",authDomain:"control-de-acceso-b04a4.firebaseapp.com",projectId:"control-de-acceso-b04a4",storageBucket:"control-de-acceso-b04a4.firebasestorage.app",messagingSenderId:"212919729909",appId:"1:212919729909:web:0614f098a98616c4e2cfbc"};
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);let unsub=null,lunsub=null,runs={};
-/* ===== Segunda app: Firebase del CONTROL DE ACCESO (colección "movimientos") ===== */
-const appA=initializeApp({apiKey:"AIzaSyBfdtZjGnnRW3W1B02kq_2YgshWuuSZr2o",authDomain:"control-de-acceso-b04a4.firebaseapp.com",projectId:"control-de-acceso-b04a4",storageBucket:"control-de-acceso-b04a4.firebasestorage.app",messagingSenderId:"212919729909",appId:"1:212919729909:web:0614f098a98616c4e2cfbc"},"acceso"),dbA=getFirestore(appA);let aun=null,cun=null;
+/* ===== Control de acceso y citas: ahora en el MISMO Firebase que los reportes ===== */
+const dbA=db; /* mismo proyecto Firebase para reportes, accesos y citas */let aun=null,cun=null;
 window.FBA={
  watch:(ok,err)=>{if(aun)return;aun=onSnapshot(query(collection(dbA,"movimientos"),orderBy("ts","desc"),limit(5000)),s=>ok(s.docs.map(d=>d.data({serverTimestamps:"estimate"}))),e=>{aun=null;err(e)})},
  salida:o=>setDoc(doc(collection(dbA,"movimientos")),Object.assign({tipo:"SALIDA"},o,{ts:serverTimestamp()})),
