@@ -239,7 +239,7 @@ function renderForm(){
  h+=`<div class="card" style="margin-top:14px"><label>Observaciones generales (opcional)</label><textarea id="ob" rows="3"${lk}>${esc(s.obs)}</textarea></div>
  <div class="card"><div class="g">
  <div><label>Guarda de turno – NOMBRES Y APELLIDOS</label><input id="gn" list="dl-n" autocomplete="off" value="${esc(s.guard)}"${lk}><label style="margin-top:8px">Firma</label><div class="sigbox" id="gb">${sigHtml(s.gs)}</div>${s.sent?"":`<button class="btn" id="gbt" data-sig="gc">${s.gs?"Cambiar firma":"Firmar"}</button>`}</div>
- <div><label>Supervisor de turno – NOMBRES Y APELLIDOS</label><input id="sn" list="dl-n" autocomplete="off" value="${esc(s.sup)}"${lk}><label style="margin-top:8px">Firma</label><div class="sigbox" id="sb">${sigHtml(s.ss)}</div><button class="btn" id="sbt" data-sig="sc">${s.ss?"Cambiar firma":"Firmar"}</button></div></div>
+ <div><label>Supervisor de turno – NOMBRES Y APELLIDOS</label><input id="sn" list="dl-n" autocomplete="off" value="${esc(s.sup)}"><label style="margin-top:8px">Firma</label><div class="sigbox" id="sb">${sigHtml(s.ss)}</div><button class="btn" id="sbt" data-sig="sc">${s.ss?"Cambiar firma":"Firmar"}</button></div></div>
  <div id="fm"></div><datalist id="dl-n">${dutyNames().map(n=>`<option value="${esc(n)}">`).join("")}</datalist>${s.sent?`<div class="msg good" style="margin-top:12px">✔ Enviado por el guarda el ${new Date(s.sent.at).toLocaleString("es-CO",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})}. Falta la firma del supervisor: lo diligenciado ya no se puede modificar.</div><div class="row" style="margin-top:12px"><button class="btn pr" id="sendSup">Enviar con firma del supervisor</button><button class="btn" id="closeSup">Cerrar sin firma del supervisor</button></div>`:`<div class="row" style="margin-top:12px"><button class="btn pr" id="send">Enviar reporte (firma del guarda)</button><span class="mu" id="cnt"></span></div>`}</div>`;
  $("#form").innerHTML=h;
  cnt();
@@ -282,8 +282,9 @@ document.addEventListener("input",e=>{const s=st[cur];if(e.target.id=="gn")s.gua
 function msg(t,c){$("#fm").innerHTML=`<div class="msg ${c}">${t}</div>`}
 async function send(){
  const s=st[cur],def=R[cur];
- if(!s.date||!s.guard.trim()||!s.sup.trim())return msg("Complete la fecha y el nombre del guarda y del supervisor.","err");
+ if(!s.date||!s.guard.trim())return msg("Complete la fecha y el nombre del guarda.","err");
  if(!s.gs)return msg("Falta la firma del guarda.","err");
+ if(s.ss&&!s.sup.trim())return msg("Escriba el nombre del supervisor para enviar con su firma.","err");
  const rid=cur+"-"+s.date.replace(/-/g,"")+"-"+Date.now(),ph=[],nov=[];
  def.secs.forEach(sec=>sec.r.forEach((nm,i)=>{const cs=[],ims=s.photos[sec.k+"|"+i]||[];for(const c of SHOW)if(s.marks.has(sec.k+"|"+i+"|"+c))cs.push(COLS[c]);
   if(cs.length||ims.length){const e={s:sec.t,r:String(i+1).padStart(2,"0")+" "+nm,c:cs};if(ims.length)e.fs=ims.map(d=>{const pid=rid+"_"+ph.length;ph.push({id:pid,d});return pid});nov.push(e)}}));
@@ -306,12 +307,13 @@ async function send(){
 }
 async function sendSup(){
  const s=st[cur];if(!s.sent)return;
+ if(!s.sup.trim())return msg("Escriba el nombre del supervisor.","err");
  if(!s.ss)return msg("Falta la firma del supervisor.","err");
- if(!await uiC("¿Enviar con la firma del supervisor? Solo se agregará la firma; lo diligenciado no cambia."))return;
+ if(!await uiC("¿Enviar con la firma del supervisor? Solo se agregarán su nombre y su firma; lo diligenciado no cambia."))return;
  $("#sendSup").disabled=true;
  try{
   if(!window.FB||!FB.sign)throw new Error("Firebase no cargó");
-  await FB.sign(s.sent.id,{ss:s.ss,ssAt:Date.now(),supStatus:"firmado"});
+  await FB.sign(s.sent.id,{sup:s.sup.trim(),ss:s.ss,ssAt:Date.now(),supStatus:"firmado"});
   msg("✔ Firma del supervisor registrada. Reporte completo.","good");
   st[cur]=fresh();saveDraft();setTimeout(renderForm,2500);
  }catch(err){msg("No se pudo registrar la firma ("+esc(err.message||err)+"). Intente de nuevo.","err");$("#sendSup").disabled=false}
@@ -346,10 +348,10 @@ function dShell(){
  $("#dash").dataset.m=m;
  if(m==="g"){
   if(DT==="rep")DT="acc";
-  $("#dash").innerHTML='<div class="dsub"><button data-dt="acc">Control de acceso</button><button data-dt="bus">Buscar ingresos</button><button data-dt="cit">Citas</button></div><div id="dp" class="hide"></div><div id="da" class="hide"></div><div id="db" class="hide"></div><div id="dc" class="hide"></div><div class="row" style="margin-top:14px"><button class="btn" id="gx">Salir de vigilancia</button></div>';
+  $("#dash").innerHTML='<div class="dsub"><button data-dt="acc">Control de acceso</button><button data-dt="bus">Buscar ingresos</button><button data-dt="cit">Citas</button><button data-dt="per">Permisos</button></div><div id="dp" class="hide"></div><div id="da" class="hide"></div><div id="db" class="hide"></div><div id="dc" class="hide"></div><div id="dd" class="hide"></div><div class="row" style="margin-top:14px"><button class="btn" id="gx" style="background:#c62828;border-color:#c62828;color:#fff">Salir de vigilancia</button></div>';
   dTab(DT);return;
  }
- $("#dash").innerHTML='<div class="dsub"><button data-dt="rep">Reportes</button><button data-dt="acc">Control de acceso</button><button data-dt="bus">Buscar ingresos</button><button data-dt="cit">Citas</button></div><div id="dp"></div><div id="da" class="hide"></div><div id="db" class="hide"></div><div id="dc" class="hide"></div>';
+ $("#dash").innerHTML='<div class="dsub"><button data-dt="rep">Reportes</button><button data-dt="acc">Control de acceso</button><button data-dt="bus">Buscar ingresos</button><button data-dt="cit">Citas</button><button data-dt="per">Permisos</button></div><div id="dp"></div><div id="da" class="hide"></div><div id="db" class="hide"></div><div id="dc" class="hide"></div><div id="dd" class="hide"></div>';
  dTab(DT);
 }
 function dTab(t){
@@ -359,9 +361,11 @@ function dTab(t){
  $("#da").classList.toggle("hide",t!="acc");
  $("#db").classList.toggle("hide",t!="bus");
  $("#dc").classList.toggle("hide",t!="cit");
+ {const dd=$("#dd");if(dd)dd.classList.toggle("hide",t!="per")}
  if(t=="acc"||t=="bus"){accBuild();accLoad(true)}
  if(t=="bus")busBuild();
  if(t=="cit")citBuild();
+ if(t=="per")perBuild();
 }
 function guardIn(){const v=($("#gp")||{}).value||"";if(v===GUARD_PIN){GUARD=true;try{localStorage.setItem("gd","1")}catch(e){}renderDash()}else{const m=$("#gm");if(m)m.innerHTML='<div class="msg err">Clave incorrecta.</div>'}}
 document.addEventListener("click",e=>{const t=e.target;if(t&&t.id==="gi")guardIn();if(t&&t.id==="gx"){GUARD=false;try{localStorage.removeItem("gd")}catch(x){}renderDash()}});
@@ -488,6 +492,7 @@ setInterval(()=>{if(accVis())accSet("acHr",new Date().toLocaleTimeString([],{hou
 /* ===== Subpestaña: Buscar ingresos (por nombre o cédula) ===== */
 const busNorm=v=>String(v==null?"":v).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
 const busNum=v=>String(v==null?"":v).replace(/\D/g,"");
+const busDay=v=>{const d=accDate(v);if(!d||isNaN(d))return"";const p=n=>String(n).padStart(2,"0");return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())};
 function busFmt(v){
  if(v===""||v==null)return "";
  if(v instanceof Date)return isNaN(v)?"":esc(v.toLocaleString("es-CO",{dateStyle:"short",timeStyle:"short"}));
@@ -503,12 +508,12 @@ function busFields(f,o){
 }
 function busBuild(){
  const db=$("#db");if(!db||db.dataset.b)return;db.dataset.b="1";
- db.innerHTML='<div class="card"><label for="bq">Buscar por nombre o cédula</label><input id="bq" type="search" placeholder="Nombre o número de documento" autocomplete="off" inputmode="search"><div class="mu" id="bn" style="margin-top:6px"></div></div><div id="br"></div>';
+ db.innerHTML='<div class="card"><div class="g"><div><label for="bq">Nombre o cédula</label><input id="bq" type="search" placeholder="Nombre o número de documento" autocomplete="off" inputmode="search"></div><div><label for="bf">Fecha de ingreso</label><input id="bf" type="date"></div><div><label for="be">Entidad</label><input id="be" type="search" list="be-l" placeholder="Empresa o entidad" autocomplete="off"><datalist id="be-l"></datalist></div></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn" id="bh">Hoy</button><button class="btn" id="bc">Limpiar</button></div><div class="mu" id="bn" style="margin-top:6px"></div></div><div id="br"></div>';
  busRender();
 }
-function busPeople(){
+function busPeople(ok){
  const m=new Map(),dk=f=>String(f[2]==null?"":f[2]).trim();
- AC.all.forEach(f=>{const d=dk(f),k=d||("n:"+busNorm(f[3]));if(!k||k==="n:")return;
+ AC.all.forEach(f=>{if(ok&&!ok(f))return;const d=dk(f),k=d||("n:"+busNorm(f[3]));if(!k||k==="n:")return;
   let p=m.get(k);if(!p){p={d:d,rows:[],outs:[]};m.set(k,p)}p.rows.push(f)});
  AC.allS.forEach(f=>{const p=m.get(dk(f));if(p)p.outs.push(f)});
  const T=f=>+accDate(f[0])||0;
@@ -517,14 +522,16 @@ function busPeople(){
 }
 function busRender(){
  const r=$("#br"),n=$("#bn"),inp=$("#bq");if(!r||!inp)return;
- const raw=inp.value.trim(),q=busNorm(raw),qn=busNum(raw),isNum=/^[\d.\s-]+$/.test(raw);
+ const raw=inp.value.trim(),q=busNorm(raw),qn=busNum(raw),isNum=/^[\d.\s-]+$/.test(raw),date=($("#bf")||{}).value||"",ent=busNorm(($("#be")||{}).value||""),hasT=raw?(isNum?qn.length>=3:q.length>=2):false;
  if(!AC.all.length){n.textContent=AC.sync==="--"?"Cargando registros…":"No hay registros de ingreso.";r.innerHTML="";return}
- if(isNum?qn.length<3:q.length<2){n.textContent=AC.all.length+" ingresos registrados · escriba al menos 2 letras o 3 dígitos";r.innerHTML="";return}
+ const dl=$("#be-l");if(dl&&dl.dataset.n!=String(AC.all.length)){dl.dataset.n=AC.all.length;const es=new Map();AC.all.forEach(f=>{const e=String(f[5]||"").trim();if(e&&!es.has(busNorm(e)))es.set(busNorm(e),e)});dl.innerHTML=[...es.values()].sort((a,b)=>a.localeCompare(b,"es")).slice(0,300).map(e=>'<option value="'+esc(e)+'">').join("")}
+ if(!hasT&&!date&&!ent){n.textContent=AC.all.length+" ingresos registrados · escriba al menos 2 letras o 3 dígitos, o elija una fecha o entidad";r.innerHTML="";return}
  const toks=q.split(/\s+/).filter(Boolean);
- let L=busPeople().filter(p=>isNum?busNum(p.d).includes(qn):(()=>{const nm=busNorm(p.rows.map(x=>x[3]).join(" "));return toks.every(t=>nm.includes(t))})());
+ const rowOk=f=>(!date||busDay(f[0])===date)&&(!ent||busNorm(f[5]).includes(ent));
+ let L=busPeople(rowOk).filter(p=>!hasT||(isNum?busNum(p.d).includes(qn):(()=>{const nm=busNorm(p.rows.map(x=>x[3]).join(" "));return toks.every(t=>nm.includes(t))})()));
  L.sort((a,b)=>(+accDate(b.rows[0][0])||0)-(+accDate(a.rows[0][0])||0));
- const tot=L.length;L=L.slice(0,30);
- n.textContent=tot?(tot+" persona"+(tot>1?"s":"")+" encontrada"+(tot>1?"s":"")+(tot>30?" · mostrando las 30 más recientes":"")):"Sin resultados";
+ const tot=L.length,lim=hasT?30:100;L=L.slice(0,lim);
+ n.textContent=tot?(tot+" persona"+(tot>1?"s":"")+" encontrada"+(tot>1?"s":"")+(tot>lim?" · mostrando las "+lim+" más recientes":"")):"Sin resultados";
  r.innerHTML=L.map((p,ix)=>{
   const f=p.rows[0],ti=+accDate(f[0])||0,to=p.outs.length?(+accDate(p.outs[0][0])||0):0;
   const stt=(p.outs.length&&to>=ti)?'<span class="pill gy">Salió '+busFmt(p.outs[0][0])+'</span>':accHoy(f[0])?'<span class="pill ok">Dentro</span>':'<span class="pill wn">Sin salida registrada</span>';
@@ -532,15 +539,17 @@ function busRender(){
   const hist=p.rows.length>1?`<details data-bk="${esc(key)}"${op}><summary>Historial de ingresos (${p.rows.length})</summary>${p.rows.map(x=>`<div class="nv"><b>${busFmt(x[0])}</b><div class="mg">${busFields(x.slice(1),1)}</div></div>`).join("")}${p.outs.length?`<div class="mu" style="margin-top:8px">Salidas registradas: ${p.outs.map(x=>busFmt(x[0])).join(" · ")}</div>`:""}</details>`:(p.outs.length?`<div class="mu" style="margin-top:8px">Salidas registradas: ${p.outs.map(x=>busFmt(x[0])).join(" · ")}</div>`:"");
   return `<div class="bp"><div class="rh"><div style="flex:1"><h3>${esc(f[3]||"-")}</h3><div class="mu">Cédula: ${esc(p.d||"-")} · ${esc(f[4]||"-")}</div></div>${stt}</div><div class="mg" style="margin-top:10px">${busFields(f)}</div>${hist}</div>`}).join("");
 }
-document.addEventListener("input",e=>{if(e.target&&e.target.id==="bq")busRender()});
+document.addEventListener("input",e=>{const i=e.target&&e.target.id;if(i==="bq"||i==="bf"||i==="be")busRender()});
+document.addEventListener("change",e=>{const i=e.target&&e.target.id;if(i==="bf"||i==="be")busRender()});
+document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("#bh,#bc");if(!b)return;if(b.id==="bh"){$("#bf").value=accHoyStr()}else{$("#bq").value="";$("#bf").value="";$("#be").value=""}busRender()});
 document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.dataset&&d.dataset.bk){d.open?AC.bo.add(d.dataset.bk):AC.bo.delete(d.dataset.bk)}},true);
 
 /* ===== Subpestaña: Citas (llegan desde citas.html, colección "citas" del Firebase de Control de Acceso) ===== */
-const CIT={on:false,list:[],t:0};
+const CIT={on:false,list:[],t:0,area:"",est:""},CIT_AREAS=["Admisiones","Recursos humanos","SST","Vicerrectorías","Psicologías","Convivencia y disciplina"];
 function citBuild(){
  const dc=$("#dc");if(!dc)return;
  if(!dc.dataset.b){dc.dataset.b="1";
-  dc.innerHTML='<div class="card"><div class="ac-h"><div class="ct">Citas registradas</div><span class="pill ok" id="ciN">0</span></div><div class="g"><div><label for="ciF">Fecha de la cita</label><input type="date" id="ciF" value="'+accHoyStr()+'"></div><div><label for="ciQ">Buscar por nombre o cédula</label><input id="ciQ" type="search" placeholder="Nombre o documento" autocomplete="off"></div></div><div class="row" style="margin-top:10px"><button class="btn" id="ciH">Hoy</button><button class="btn" id="ciT">Ver todas</button></div><div class="mu" id="ciS" style="margin-top:6px">Cargando citas…</div></div><div id="ciL"></div>';
+  dc.innerHTML='<div class="card"><div class="ac-h"><div class="ct">Citas registradas</div><span class="pill ok" id="ciN">0</span></div><div class="g"><div><label for="ciF">Fecha de la cita</label><input type="date" id="ciF" value="'+accHoyStr()+'"></div><div><label for="ciQ">Buscar por nombre o cédula</label><input id="ciQ" type="search" placeholder="Nombre o documento" autocomplete="off"></div></div><div class="row" style="margin-top:10px"><button class="btn" id="ciH">Hoy</button><button class="btn" id="ciT">Ver todas</button></div><div id="ciE" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"></div><div id="ciA" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"></div><div class="mu" id="ciS" style="margin-top:6px">Cargando citas…</div></div><div id="ciL"></div>';
  }
  citStart();citRender();
 }
@@ -555,19 +564,27 @@ function citFecha(v){return/^\d{4}-\d{2}-\d{2}$/.test(v||"")?v.split("-").revers
 function citRender(){
  const L=$("#ciL");if(!L)return;
  const f=($("#ciF")||{}).value||"",raw=($("#ciQ")||{}).value||"",q=busNorm(raw),qn=busNum(raw);
- let a=CIT.list.filter(c=>(!f||c.fechaCita===f)&&(!q||busNorm(c.nombre).includes(q)||(qn.length>=3&&busNum(c.doc).includes(qn))));
+ const b0=CIT.list.filter(c=>(!f||c.fechaCita===f)&&(!q||busNorm(c.nombre).includes(q)||(qn.length>=3&&busNum(c.doc).includes(qn))));
+ const b=b0.filter(c=>!CIT.est||(CIT.est==="p"?!c.ingresoAt:!!c.ingresoAt));
+ const np=b0.filter(c=>!c.ingresoAt).length;
+ const ce=$("#ciE");if(ce)ce.innerHTML=[["","Todas ("+b0.length+")"],["p","Pendientes ("+np+")"],["i","Ya ingresaron ("+(b0.length-np)+")"]].map(x=>'<button class="btn'+(CIT.est===x[0]?" pr":"")+'" data-ce="'+x[0]+'">'+x[1]+'</button>').join("");
+ const cn={};b.forEach(c=>{cn[c.area]=(cn[c.area]||0)+1});
+ const ca=$("#ciA");if(ca)ca.innerHTML='<button class="btn'+(CIT.area?"":" pr")+'" data-ca="">Todas ('+b.length+')</button>'+CIT_AREAS.map(x=>'<button class="btn'+(CIT.area===x?" pr":"")+'" data-ca="'+esc(x)+'">'+esc(x)+' ('+(cn[x]||0)+')</button>').join("");
+ let a=b.filter(c=>!CIT.area||c.area===CIT.area);
  const k=c=>(c.fechaCita||"")+" "+(c.horaCita||"");
  a.sort((x,y)=>f?(k(x)<k(y)?-1:1):(k(x)<k(y)?1:-1));
  const n=$("#ciN");if(n)n.textContent=a.length;
- const s=$("#ciS");if(s)s.textContent=CIT.on&&!CIT.list.length?"Sin citas registradas.":(f?"Citas del "+citFecha(f):"Todas las citas")+(a.length?"":" · sin resultados");
+ const s=$("#ciS");if(s)s.textContent=CIT.on&&!CIT.list.length?"Sin citas registradas.":(f?"Citas del "+citFecha(f):"Todas las citas")+(CIT.area?" · "+CIT.area:"")+(a.length?"":" · sin resultados");
  const fd=(t,v)=>{const x=busFmt(v);return x?'<div><small>'+t+'</small><b>'+x+'</b></div>':""};
- L.innerHTML=a.map(c=>{
+ const card=c=>{
   const reg=c.ts&&c.ts.toDate?c.ts.toDate():null;
   return '<div class="bp"><div class="rh"><div style="flex:1"><h3>'+esc(c.nombre||"-")+'</h3><div class="mu">Cédula: '+esc(c.doc||"-")+' · '+esc(c.rol||"-")+'</div></div><span class="pill ok">'+citHora(c.horaCita)+'</span></div><div class="mg" style="margin-top:10px">'
    +fd("Citado(a) en",c.areaTxt||c.area)+fd("Fecha de la cita",citFecha(c.fechaCita))+fd("Hora de la cita",citHora(c.horaCita))
    +fd("Tipo de documento",c.tipoDoc)+fd("Entidad",c.entidad)+fd("Teléfono",c.contacto)+fd("Placa",c.placa)
    +fd("Contacto de emergencia",c.emergenciaNombre)+fd("Tel. emergencia",c.emergencia)+fd("Parentesco",c.parentesco)+fd("Registrada",reg)
-   +'</div>'+citAct(c)+'</div>'}).join("");
+   +'</div>'+citAct(c)+'</div>'};
+ const gr=[...CIT_AREAS,...new Set(a.map(c=>c.area||"").filter(x=>!CIT_AREAS.includes(x)))];
+ L.innerHTML=gr.map(g=>{const z=a.filter(c=>(c.area||"")===g);return z.length?'<div class="dh">'+esc(g||"Sin área")+'<small>'+z.length+' cita'+(z.length===1?"":"s")+'</small></div>'+z.map(card).join(""):""}).join("");
 }
 const CITP={};
 function citAct(c){
@@ -589,7 +606,66 @@ async function citIngresar(id){
 }
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-ci]");if(b)citIngresar(b.dataset.ci)});
 document.addEventListener("input",e=>{const i=e.target&&e.target.id;if(i==="ciQ"||i==="ciF")citRender()});
+document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-ca]");if(!b)return;CIT.area=(b.dataset.ca&&CIT.area===b.dataset.ca)?"":b.dataset.ca;citRender()});
+document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-ce]");if(!b)return;CIT.est=b.dataset.ce;citRender()});
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("#ciH,#ciT");if(!b)return;$("#ciF").value=b.id==="ciH"?accHoyStr():"";citRender()});
+
+/* ===== Subpestaña: Permisos (estudiantes, docentes y trabajadores con permiso) ===== */
+const PER={on:false,list:[],t:0,tipo:""},PERT=[["ESTUDIANTE","Estudiantes"],["DOCENTE","Docentes"],["TRABAJADOR","Trabajadores"]],PERS={ESTUDIANTE:"Estudiante",DOCENTE:"Docente",TRABAJADOR:"Trabajador"};
+function perBuild(){
+ const dd=$("#dd");if(!dd)return;
+ if(!dd.dataset.b){dd.dataset.b="1";
+  dd.innerHTML='<div class="card"><div class="ct">Agregar persona con permiso</div><div class="g"><div><label for="pnm">Nombres y apellidos completos</label><input id="pnm" autocomplete="off"></div><div><label for="pdc">Número de cédula</label><input id="pdc" inputmode="numeric" autocomplete="off"></div><div><label for="ptp">Tipo</label><select id="ptp"><option value="">Seleccione…</option><option value="ESTUDIANTE">Estudiante</option><option value="DOCENTE">Docente</option><option value="TRABAJADOR">Trabajador</option></select></div></div><div class="row" style="margin-top:10px"><button class="btn pr" id="pgd">Guardar permiso</button></div><div id="pms" style="margin-top:6px"></div></div><div class="card"><div class="ct">Buscar permisos</div><div id="pbt" style="display:flex;gap:8px;flex-wrap:wrap"></div><input id="pq" type="search" placeholder="Buscar por nombre o cédula" autocomplete="off" style="margin-top:10px"><div class="mu" id="pst" style="margin-top:6px">Cargando…</div></div><div id="pl"></div>';
+ }
+ perStart();perRender();
+}
+function perStart(){
+ if(PER.on)return;
+ if(!window.FBA||!FBA.watchPermisos){if(!PER.t)PER.t=setTimeout(()=>{PER.t=0;perStart()},1000);return}
+ PER.on=true;
+ FBA.watchPermisos(l=>{PER.list=l;perRender()},e=>{PER.on=false;console.log(e);const s=$("#pst");if(s)s.innerHTML='<span class="msg err">No se pudieron leer los permisos: '+esc(e.code||e.message)+'</span>'});
+}
+function perMsg(t,c){const e=$("#pms");if(!e)return;e.innerHTML='<div class="msg '+c+'">'+esc(t)+'</div>';setTimeout(()=>{if($("#pms")===e)e.innerHTML=""},5000)}
+async function perSave(){
+ const nm=($("#pnm").value||"").trim().replace(/\s+/g," "),dc=busNum($("#pdc").value),tp=$("#ptp").value;
+ if(nm.split(" ").length<2)return perMsg("Escriba los nombres y apellidos completos.","err");
+ if(dc.length<5)return perMsg("Escriba el número de cédula (solo números).","err");
+ if(!tp)return perMsg("Seleccione si es estudiante, docente o trabajador.","err");
+ if(!window.FBA||!FBA.addPermiso)return perMsg("Firebase aún no carga.","err");
+ const b=$("#pgd");b.disabled=true;
+ try{
+  const ex=PER.list.find(x=>x.id===dc);
+  await FBA.addPermiso(dc,{nombre:nm,doc:dc,tipo:tp});
+  perMsg((ex?"✅ Permiso actualizado: ":"✅ Permiso guardado: ")+nm,"good");
+  $("#pnm").value="";$("#pdc").value="";$("#ptp").value="";
+  PER.tipo=tp;perRender();
+ }catch(e){console.log(e);perMsg("No se pudo guardar: "+(e.code||e.message),"err")}
+ finally{b.disabled=false}
+}
+async function perDel(id){
+ const p=PER.list.find(x=>x.id===id);if(!p||!AUTH)return;
+ if(!await uiC("¿Quitar el permiso de "+(p.nombre||id)+"?"))return;
+ try{await FBA.delPermiso(id);perMsg("Permiso eliminado.","good")}catch(e){console.log(e);perMsg("No se pudo eliminar: "+(e.code||e.message),"err")}
+}
+function perRender(){
+ const L=$("#pl"),B=$("#pbt");if(!L||!B)return;
+ const cn={};PER.list.forEach(p=>{cn[p.tipo]=(cn[p.tipo]||0)+1});
+ B.innerHTML=PERT.map(t=>'<button class="btn'+(PER.tipo===t[0]?" pr":"")+'" data-pt="'+t[0]+'">'+t[1]+' ('+(cn[t[0]]||0)+')</button>').join("");
+ const raw=($("#pq")||{}).value||"",q=busNorm(raw),qn=busNum(raw),isNum=/^[\d.\s-]+$/.test(raw.trim())&&qn.length>0,toks=q.split(/\s+/).filter(Boolean),s=$("#pst");
+ if(!PER.tipo&&!q){if(s)s.textContent=PER.list.length?"Toque Estudiantes, Docentes o Trabajadores, o escriba un nombre o cédula.":(PER.on?"Aún no hay permisos registrados.":"Cargando…");L.innerHTML="";return}
+ let a=PER.list.filter(p=>(!PER.tipo||p.tipo===PER.tipo)&&(!q||(isNum?busNum(p.doc).includes(qn):toks.every(t=>busNorm(p.nombre).includes(t)))));
+ a.sort((x,y)=>String(x.nombre||"").localeCompare(String(y.nombre||""),"es"));
+ const tot=a.length;a=a.slice(0,200);
+ if(s)s.textContent=(PER.tipo?PERT.find(t=>t[0]===PER.tipo)[1]+" · ":"")+tot+" permiso"+(tot===1?"":"s")+(tot>200?" · mostrando 200":"");
+ L.innerHTML=a.map(p=>'<div class="ac-i"><div><b>'+esc(p.nombre||"-")+'</b><small>Cédula: '+esc(p.doc||p.id)+' · '+esc(PERS[p.tipo]||p.tipo||"-")+'</small></div>'+(AUTH?'<button class="btn" data-pdel="'+esc(p.id)+'">Quitar</button>':"")+'</div>').join("");
+}
+document.addEventListener("click",e=>{
+ const t=e.target.closest&&e.target.closest("[data-pt],#pgd,[data-pdel]");if(!t)return;
+ if(t.id==="pgd")return perSave();
+ if(t.dataset.pdel)return perDel(t.dataset.pdel);
+ PER.tipo=PER.tipo===t.dataset.pt?"":t.dataset.pt;perRender();
+});
+document.addEventListener("input",e=>{if(e.target&&e.target.id==="pq")perRender()});
 
 function renderDash(){
  if(!AUTH&&GUARD){ED.on=false;dShell();return}
@@ -972,12 +1048,15 @@ const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);l
 /* ===== Control de acceso y citas: ahora en el MISMO Firebase que los reportes ===== */
 /* Control de acceso y citas viven en su PROPIO proyecto Firebase (control-de-acceso-b04a4); aquí se leen en vivo con una 2ª app */
 const appA=initializeApp({apiKey:"AIzaSyBfdtZjGnnRW3W1B02kq_2YgshWuuSZr2o",authDomain:"control-de-acceso-b04a4.firebaseapp.com",projectId:"control-de-acceso-b04a4",storageBucket:"control-de-acceso-b04a4.firebasestorage.app",messagingSenderId:"212919729909",appId:"1:212919729909:web:0614f098a98616c4e2cfbc",measurementId:"G-NHMT8KJ8WR"},"acceso");
-const dbA=getFirestore(appA);let aun=null,cun=null;
+const dbA=getFirestore(appA);let aun=null,cun=null,pun=null;
 window.FBA={
  watch:(ok,err)=>{if(aun)return;aun=onSnapshot(query(collection(dbA,"movimientos"),orderBy("ts","desc"),limit(5000)),s=>ok(s.docs.map(d=>d.data({serverTimestamps:"estimate"}))),e=>{aun=null;err(e)})},
  salida:o=>setDoc(doc(collection(dbA,"movimientos")),Object.assign({tipo:"SALIDA"},o,{ts:serverTimestamp()})),
  ingreso:(cid,o)=>{const b=writeBatch(dbA);b.set(doc(collection(dbA,"movimientos")),Object.assign({tipo:"INGRESO"},o,{ts:serverTimestamp()}));b.update(doc(dbA,"citas",cid),{ingresoAt:serverTimestamp(),ingresoPor:(auth.currentUser&&auth.currentUser.email)||"vigilancia"});return b.commit()},
- watchCitas:(ok,err)=>{if(cun)return;cun=onSnapshot(query(collection(dbA,"citas"),orderBy("ts","desc"),limit(2000)),s=>ok(s.docs.map(d=>Object.assign({id:d.id},d.data({serverTimestamps:"estimate"})))),e=>{cun=null;err(e)})}
+ watchCitas:(ok,err)=>{if(cun)return;cun=onSnapshot(query(collection(dbA,"citas"),orderBy("ts","desc"),limit(2000)),s=>ok(s.docs.map(d=>Object.assign({id:d.id},d.data({serverTimestamps:"estimate"})))),e=>{cun=null;err(e)})},
+ watchPermisos:(ok,err)=>{if(pun)return;pun=onSnapshot(collection(dbA,"permisos"),s=>ok(s.docs.map(d=>Object.assign({id:d.id},d.data()))),e=>{pun=null;err(e)})},
+ addPermiso:(id,o)=>setDoc(doc(dbA,"permisos",id),Object.assign({},o,{ts:serverTimestamp(),por:(auth.currentUser&&auth.currentUser.email)||"vigilancia"}),{merge:true}),
+ delPermiso:id=>deleteDoc(doc(dbA,"permisos",id))
 };
 const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"),defFrom=()=>{const d=new Date();return iso(new Date(d.getFullYear(),d.getMonth()-1,1))},PG=150;
 let RG={from:defFrom(),to:"",n:PG};
