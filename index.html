@@ -615,7 +615,7 @@ const PER={on:false,list:[],t:0,tipo:""},PERT=[["ESTUDIANTE","Estudiantes"],["DO
 function perBuild(){
  const dd=$("#dd");if(!dd)return;
  if(!dd.dataset.b){dd.dataset.b="1";
-  dd.innerHTML='<div class="card"><div class="ct">Agregar persona con permiso</div><div class="g"><div><label for="pnm">Nombres y apellidos completos</label><input id="pnm" autocomplete="off"></div><div><label for="pdc">Número de cédula</label><input id="pdc" inputmode="numeric" autocomplete="off"></div><div><label for="ptp">Tipo</label><select id="ptp"><option value="">Seleccione…</option><option value="ESTUDIANTE">Estudiante</option><option value="DOCENTE">Docente</option><option value="TRABAJADOR">Trabajador</option></select></div></div><div class="row" style="margin-top:10px"><button class="btn pr" id="pgd">Guardar permiso</button></div><div id="pms" style="margin-top:6px"></div></div><div class="card"><div class="ct">Buscar permisos</div><div id="pbt" style="display:flex;gap:8px;flex-wrap:wrap"></div><input id="pq" type="search" placeholder="Buscar por nombre o cédula" autocomplete="off" style="margin-top:10px"><div class="mu" id="pst" style="margin-top:6px">Cargando…</div></div><div id="pl"></div>';
+  dd.innerHTML='<div class="card"><div class="ct">Registrar permiso</div><div class="g"><div><label for="pnm">Nombres y apellidos completos</label><input id="pnm" autocomplete="off"></div><div><label for="pdc">Número de cédula</label><input id="pdc" inputmode="numeric" autocomplete="off"></div><div><label for="ptp">Tipo</label><select id="ptp"><option value="">Seleccione…</option><option value="ESTUDIANTE">Estudiante</option><option value="DOCENTE">Docente</option><option value="TRABAJADOR">Trabajador</option></select></div><div><label for="pmv">Movimiento</label><select id="pmv"><option value="SALIDA">Salida</option><option value="INGRESO">Ingreso</option></select></div><div><label for="pfd">Desde (fecha)</label><input id="pfd" type="date"></div><div><label for="pfh">Hasta (fecha)</label><input id="pfh" type="date"></div><div><label for="phr">Hora de salida / ingreso</label><input id="phr" type="time"></div><div><label for="pft">Foto del documento de permiso</label><input id="pft" type="file" accept="image/*"></div></div><div style="margin-top:10px"><label for="pmo">Motivo del permiso</label><textarea id="pmo" rows="3" maxlength="500" placeholder="Ej.: cita médica, trámite, calamidad doméstica…"></textarea></div><img id="pfp" class="hide" alt="Vista previa" style="max-width:180px;max-height:180px;margin-top:8px;border-radius:8px;border:1px solid var(--bd)"><div class="row" style="margin-top:10px"><button class="btn pr" id="pgd">Guardar permiso</button></div><div id="pms" style="margin-top:6px"></div></div><div class="card"><div class="ct">Buscar permisos</div><div id="pbt" style="display:flex;gap:8px;flex-wrap:wrap"></div><input id="pq" type="search" placeholder="Buscar por nombre o cédula" autocomplete="off" style="margin-top:10px"><div class="mu" id="pst" style="margin-top:6px">Cargando…</div></div><div id="pl"></div>';
  }
  perStart();perRender();
 }
@@ -626,18 +626,25 @@ function perStart(){
  FBA.watchPermisos(l=>{PER.list=l;perRender()},e=>{PER.on=false;console.log(e);const s=$("#pst");if(s)s.innerHTML='<span class="msg err">No se pudieron leer los permisos: '+esc(e.code||e.message)+'</span>'});
 }
 function perMsg(t,c){const e=$("#pms");if(!e)return;e.innerHTML='<div class="msg '+c+'">'+esc(t)+'</div>';setTimeout(()=>{if($("#pms")===e)e.innerHTML=""},5000)}
+const perFecha=f=>f?String(f).split("-").reverse().join("/"):"";
+function perFoto(file){return new Promise((res,rej)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{const k=Math.min(1,1280/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext("2d").drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);let q=.75,d=c.toDataURL("image/jpeg",q);while(d.length>300000&&q>.3){q-=.1;d=c.toDataURL("image/jpeg",q)}res(d)};im.onerror=()=>{URL.revokeObjectURL(u);rej(new Error("imagen no válida"))};im.src=u})}
+function perEstado(p){const t=new Date(),h=t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0");if(!p.desde)return["","Sin fechas"];if(p.hasta&&h>p.hasta)return["","Vencido"];if(h<p.desde)return["wn","Próximo"];return["ok","Vigente"]}
 async function perSave(){
- const nm=($("#pnm").value||"").trim().replace(/\s+/g," "),dc=busNum($("#pdc").value),tp=$("#ptp").value;
+ const nm=($("#pnm").value||"").trim().replace(/\s+/g," "),dc=busNum($("#pdc").value),tp=$("#ptp").value,mv=$("#pmv").value,fd=$("#pfd").value,fh=$("#pfh").value,hr=$("#phr").value,mo=($("#pmo").value||"").trim(),fl=($("#pft").files||[])[0];
  if(nm.split(" ").length<2)return perMsg("Escriba los nombres y apellidos completos.","err");
  if(dc.length<5)return perMsg("Escriba el número de cédula (solo números).","err");
  if(!tp)return perMsg("Seleccione si es estudiante, docente o trabajador.","err");
+ if(!fd||!fh)return perMsg("Indique la fecha desde y la fecha hasta.","err");
+ if(fh<fd)return perMsg("La fecha final no puede ser anterior a la inicial.","err");
+ if(!hr)return perMsg("Indique la hora de salida o ingreso.","err");
+ if(mo.length<3)return perMsg("Escriba el motivo del permiso.","err");
  if(!window.FBA||!FBA.addPermiso)return perMsg("Firebase aún no carga.","err");
  const b=$("#pgd");b.disabled=true;
  try{
-  const ex=PER.list.find(x=>x.id===dc);
-  await FBA.addPermiso(dc,{nombre:nm,doc:dc,tipo:tp});
-  perMsg((ex?"✅ Permiso actualizado: ":"✅ Permiso guardado: ")+nm,"good");
-  $("#pnm").value="";$("#pdc").value="";$("#ptp").value="";
+  let foto="";if(fl)foto=await perFoto(fl);
+  await FBA.addPermiso(dc+"_"+Date.now(),{nombre:nm,doc:dc,tipo:tp,movimiento:mv,desde:fd,hasta:fh,hora:hr,motivo:mo,foto:foto});
+  perMsg("✅ Permiso guardado: "+nm,"good");
+  ["pnm","pdc","ptp","pfd","pfh","phr","pmo","pft"].forEach(i=>{$("#"+i).value=""});$("#pmv").value="SALIDA";$("#pfp").classList.add("hide");
   PER.tipo=tp;perRender();
  }catch(e){console.log(e);perMsg("No se pudo guardar: "+(e.code||e.message),"err")}
  finally{b.disabled=false}
@@ -657,15 +664,17 @@ function perRender(){
  a.sort((x,y)=>String(x.nombre||"").localeCompare(String(y.nombre||""),"es"));
  const tot=a.length;a=a.slice(0,200);
  if(s)s.textContent=(PER.tipo?PERT.find(t=>t[0]===PER.tipo)[1]+" · ":"")+tot+" permiso"+(tot===1?"":"s")+(tot>200?" · mostrando 200":"");
- L.innerHTML=a.map(p=>'<div class="ac-i"><div><b>'+esc(p.nombre||"-")+'</b><small>Cédula: '+esc(p.doc||p.id)+' · '+esc(PERS[p.tipo]||p.tipo||"-")+'</small></div>'+(AUTH?'<button class="btn" data-pdel="'+esc(p.id)+'">Quitar</button>':"")+'</div>').join("");
+ L.innerHTML=a.map(p=>{const e=perEstado(p);return '<div class="ac-i" style="align-items:flex-start"><div style="flex:1;min-width:0"><b>'+esc(p.nombre||"-")+'</b> <span class="pill '+e[0]+'">'+e[1]+'</span><small>Cédula: '+esc(p.doc||p.id)+' · '+esc(PERS[p.tipo]||p.tipo||"-")+'</small>'+(p.desde?'<small>'+(p.movimiento==="INGRESO"?"Ingreso":"Salida")+' · '+perFecha(p.desde)+(p.hasta&&p.hasta!==p.desde?' al '+perFecha(p.hasta):'')+(p.hora?' · '+esc(p.hora):'')+'</small>':'')+(p.motivo?'<small>Motivo: '+esc(p.motivo)+'</small>':'')+(p.por?'<small>Registrado por: '+esc(p.por)+'</small>':'')+'</div>'+(p.foto?'<img src="'+esc(p.foto)+'" data-pfoto="'+esc(p.id)+'" alt="Documento" style="width:56px;height:56px;object-fit:cover;border-radius:6px;cursor:pointer;flex:none">':'')+(AUTH?'<button class="btn" data-pdel="'+esc(p.id)+'">Quitar</button>':"")+'</div>'}).join("");
 }
 document.addEventListener("click",e=>{
+ const ph=e.target.closest&&e.target.closest("[data-pfoto]");if(ph){const p=PER.list.find(x=>x.id===ph.dataset.pfoto);if(p&&p.foto){const o=document.createElement("div");o.id="pvp";o.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:70;display:flex;align-items:center;justify-content:center;padding:12px";o.innerHTML='<img src="'+esc(p.foto)+'" alt="Documento de permiso" style="max-width:100%;max-height:92vh;border-radius:8px">';o.onclick=()=>o.remove();document.body.appendChild(o)}return}
  const t=e.target.closest&&e.target.closest("[data-pt],#pgd,[data-pdel]");if(!t)return;
  if(t.id==="pgd")return perSave();
  if(t.dataset.pdel)return perDel(t.dataset.pdel);
  PER.tipo=PER.tipo===t.dataset.pt?"":t.dataset.pt;perRender();
 });
 document.addEventListener("input",e=>{if(e.target&&e.target.id==="pq")perRender()});
+document.addEventListener("change",e=>{if(e.target&&e.target.id==="pft"){const f=(e.target.files||[])[0],i=$("#pfp");if(f&&i){i.src=URL.createObjectURL(f);i.classList.remove("hide")}else if(i)i.classList.add("hide")}});
 
 function renderDash(){
  if(!AUTH&&GUARD){ED.on=false;dShell();return}
