@@ -275,7 +275,7 @@ document.addEventListener("click",e=>{
  if(t.id=="send")send();
  if(t.id=="sendSup")sendSup();
  if(t.id=="closeSup")closeSup();
- if(t.id=="li")FB.login($("#le").value,$("#lp").value).catch(()=>{$("#lm").innerHTML='<div class="msg err">Correo o contraseña incorrectos.</div>'});
+ if(t.id=="li")FB.login($("#le").value,$("#lp").value).catch(e=>{const c=String(e&&e.code||"");$("#lm").innerHTML='<div class="msg err">'+(c==="auth/operation-not-allowed"?"El acceso con correo y contraseña no está activado en Firebase.":c==="auth/unauthorized-domain"?"Este dominio no está autorizado en Firebase (Authentication → Configuración → Dominios autorizados).":"Correo o contraseña incorrectos. Verifique que el usuario exista en este proyecto de Firebase.")+" <small>("+esc(c||"error")+")</small></div>"});
 });
 document.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.matches&&e.target.matches("td.c,td.p")){e.preventDefault();e.target.click()}});
 document.addEventListener("input",e=>{const s=st[cur];if(e.target.id=="gn")s.guard=e.target.value;if(e.target.id=="sn")s.sup=e.target.value;if(e.target.id=="ob")s.obs=e.target.value;if(e.target.id=="fd")s.date=e.target.value});
