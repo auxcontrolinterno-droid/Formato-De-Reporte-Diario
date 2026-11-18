@@ -217,7 +217,7 @@ const $=s=>document.querySelector(s),esc=s=>String(s).replace(/[&<>"]/g,c=>({"&"
 let cur="r1",st={r1:null,r2:null},UID=null,AUTH=false,all=[];
 function setAll(a,au){all=a;AUTH=au;if(!$("#dash").classList.contains("hide"))renderDash()}
 const today=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
-const fresh=()=>({marks:new Set(),photos:{},gt:null,date:today(),guard:"",sup:"",obs:"",gs:null,ss:null});
+const fresh=()=>({marks:new Set(),photos:{},gt:null,date:today(),guard:"",sup:"",obs:"",gs:null,ss:null,sent:null});
 st.r1=fresh();st.r2=fresh();
 function safe(f,d){try{return f()}catch(e){return d}}
 const kv=(()=>{let p;const o=()=>p||(p=new Promise((r,j)=>{const q=indexedDB.open("altamira",1);q.onupgradeneeded=()=>q.result.createObjectStore("k");q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error)}));const t=(m,f)=>o().then(d=>new Promise((r,j)=>{const x=d.transaction("k",m),q=f(x.objectStore("k"));x.oncomplete=()=>r(q&&q.result);x.onerror=x.onabort=()=>j(x.error)}));return{get:k=>t("readonly",s=>s.get(k)),set:(k,v)=>t("readwrite",s=>s.put(v,k))}})();
@@ -227,8 +227,8 @@ window.alert=m=>{const t=document.createElement("div");t.className="ts";t.setAtt
 const dutyNames=()=>safe(()=>JSON.parse(localStorage.getItem("duty")||"[]"),[]);
 
 function renderForm(){
- const id=cur,def=R[id],s=st[id];
- let h=`<div class="card"><b>${esc(def.n)}</b><div class="g" style="margin-top:10px"><div><label>Fecha (día/mes/año)</label><input type="date" id="fd" value="${s.date}"></div></div>
+ const id=cur,def=R[id],s=st[id],lk=s.sent?" disabled":"";
+ let h=`<div class="card"><b>${esc(def.n)}</b><div class="g" style="margin-top:10px"><div><label>Fecha (día/mes/año)</label><input type="date" id="fd" value="${s.date}"${lk}></div></div>
  <p class="mu">Toque una casilla para marcar <b>SÍ</b> (novedad). Las casillas con raya “—” = sin novedad.</p></div>`;
  def.secs.forEach(sec=>{
   h+=`<div class="sec">${esc(sec.t)}</div><div class="wrap"><table><thead><tr><th rowspan="2">No. / Aula</th><th rowspan="2">Foto</th>${HD.map(x=>`<th colspan="${x[1].length}">${x[0]}</th>`).join("")}</tr><tr>${HD.map(x=>x[1].map(y=>`<th>${y}</th>`).join("")).join("")}</tr></thead><tbody>`;
@@ -236,15 +236,16 @@ function renderForm(){
    for(const c of SHOW){const x=s.marks.has(sec.k+"|"+i+"|"+c);h+=`<td class="c${x?" x":""}" data-k="${sec.k}|${i}|${c}" role="checkbox" tabindex="0" aria-checked="${x}" aria-label="${COLS[c]} – ${esc(nm)}">${x?"SÍ":"—"}</td>`}
    h+="</tr>"});
   h+="</tbody></table></div>"});
- h+=`<div class="card" style="margin-top:14px"><label>Observaciones generales (opcional)</label><textarea id="ob" rows="3">${esc(s.obs)}</textarea></div>
+ h+=`<div class="card" style="margin-top:14px"><label>Observaciones generales (opcional)</label><textarea id="ob" rows="3"${lk}>${esc(s.obs)}</textarea></div>
  <div class="card"><div class="g">
- <div><label>Guarda de turno – NOMBRES Y APELLIDOS</label><input id="gn" list="dl-n" autocomplete="off" value="${esc(s.guard)}"><label style="margin-top:8px">Firma</label><div class="sigbox" id="gb">${sigHtml(s.gs)}</div><button class="btn" id="gbt" data-sig="gc">${s.gs?"Cambiar firma":"Firmar"}</button></div>
- <div><label>Supervisor de turno – NOMBRES Y APELLIDOS</label><input id="sn" list="dl-n" autocomplete="off" value="${esc(s.sup)}"><label style="margin-top:8px">Firma</label><div class="sigbox" id="sb">${sigHtml(s.ss)}</div><button class="btn" id="sbt" data-sig="sc">${s.ss?"Cambiar firma":"Firmar"}</button></div></div>
- <div id="fm"></div><datalist id="dl-n">${dutyNames().map(n=>`<option value="${esc(n)}">`).join("")}</datalist><div class="row" style="margin-top:12px"><button class="btn pr" id="send">Finalizar y enviar reporte</button><span class="mu" id="cnt"></span></div></div>`;
+ <div><label>Guarda de turno – NOMBRES Y APELLIDOS</label><input id="gn" list="dl-n" autocomplete="off" value="${esc(s.guard)}"${lk}><label style="margin-top:8px">Firma</label><div class="sigbox" id="gb">${sigHtml(s.gs)}</div>${s.sent?"":`<button class="btn" id="gbt" data-sig="gc">${s.gs?"Cambiar firma":"Firmar"}</button>`}</div>
+ <div><label>Supervisor de turno – NOMBRES Y APELLIDOS</label><input id="sn" list="dl-n" autocomplete="off" value="${esc(s.sup)}"${lk}><label style="margin-top:8px">Firma</label><div class="sigbox" id="sb">${sigHtml(s.ss)}</div><button class="btn" id="sbt" data-sig="sc">${s.ss?"Cambiar firma":"Firmar"}</button></div></div>
+ <div id="fm"></div><datalist id="dl-n">${dutyNames().map(n=>`<option value="${esc(n)}">`).join("")}</datalist>${s.sent?`<div class="msg good" style="margin-top:12px">✔ Enviado por el guarda el ${new Date(s.sent.at).toLocaleString("es-CO",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})}. Falta la firma del supervisor: lo diligenciado ya no se puede modificar.</div><div class="row" style="margin-top:12px"><button class="btn pr" id="sendSup">Enviar con firma del supervisor</button><button class="btn" id="closeSup">Cerrar sin firma del supervisor</button></div>`:`<div class="row" style="margin-top:12px"><button class="btn pr" id="send">Enviar reporte (firma del guarda)</button><span class="mu" id="cnt"></span></div>`}</div>`;
  $("#form").innerHTML=h;
  cnt();
 }
 function cnt(){const e=$("#cnt");if(e){const n=nph(st[cur]);e.textContent=[...st[cur].marks].filter(m=>SHOW.includes(+m.split("|").pop())).length+" novedad(es) marcada(s)"+(n?" · "+n+" foto(s)":"")}}
+const supTxt=d=>d.ss?"Firmado":(d.supStatus=="sin_firma"?"Sin firma del supervisor":"Pendiente de firma del supervisor");
 const sigHtml=img=>img?`<img class="sig" src="${img}">`:'<span class="mu">Sin firma</span>';
 function sigRefresh(id){const g=id=="gc",img=st[cur][g?"gs":"ss"];$(g?"#gb":"#sb").innerHTML=sigHtml(img);$(g?"#gbt":"#sbt").textContent=img?"Cambiar firma":"Firmar"}
 function sigOpen(id){
@@ -269,9 +270,11 @@ document.addEventListener("click",e=>{
  if(t.dataset.v){document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b===t));
   if(t.dataset.v=="dash"){$("#form").classList.add("hide");$("#dash").classList.remove("hide");renderDash()}
   else{cur=t.dataset.v;$("#dash").classList.add("hide");$("#form").classList.remove("hide");renderForm()}return}
- if(t.classList.contains("c")){const k=t.dataset.k,s=st[cur].marks;s.has(k)?s.delete(k):s.add(k);t.classList.toggle("x");t.textContent=s.has(k)?"SÍ":"—";t.setAttribute("aria-checked",s.has(k));cnt();return}
- if(t.dataset.sig){sigOpen(t.dataset.sig);return}
+ if(t.classList.contains("c")){if(st[cur].sent)return;const k=t.dataset.k,s=st[cur].marks;s.has(k)?s.delete(k):s.add(k);t.classList.toggle("x");t.textContent=s.has(k)?"SÍ":"—";t.setAttribute("aria-checked",s.has(k));cnt();return}
+ if(t.dataset.sig){if(st[cur].sent&&t.dataset.sig=="gc")return;sigOpen(t.dataset.sig);return}
  if(t.id=="send")send();
+ if(t.id=="sendSup")sendSup();
+ if(t.id=="closeSup")closeSup();
  if(t.id=="li")FB.login($("#le").value,$("#lp").value).catch(()=>{$("#lm").innerHTML='<div class="msg err">Correo o contraseña incorrectos.</div>'});
 });
 document.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.matches&&e.target.matches("td.c,td.p")){e.preventDefault();e.target.click()}});
@@ -280,26 +283,47 @@ function msg(t,c){$("#fm").innerHTML=`<div class="msg ${c}">${t}</div>`}
 async function send(){
  const s=st[cur],def=R[cur];
  if(!s.date||!s.guard.trim()||!s.sup.trim())return msg("Complete la fecha y el nombre del guarda y del supervisor.","err");
- if(!s.gs||!s.ss)return msg("Faltan las firmas del guarda y/o del supervisor.","err");
+ if(!s.gs)return msg("Falta la firma del guarda.","err");
  const rid=cur+"-"+s.date.replace(/-/g,"")+"-"+Date.now(),ph=[],nov=[];
  def.secs.forEach(sec=>sec.r.forEach((nm,i)=>{const cs=[],ims=s.photos[sec.k+"|"+i]||[];for(const c of SHOW)if(s.marks.has(sec.k+"|"+i+"|"+c))cs.push(COLS[c]);
   if(cs.length||ims.length){const e={s:sec.t,r:String(i+1).padStart(2,"0")+" "+nm,c:cs};if(ims.length)e.fs=ims.map(d=>{const pid=rid+"_"+ph.length;ph.push({id:pid,d});return pid});nov.push(e)}}));
  const rooms=def.secs.reduce((a,x)=>a+x.r.length,0);
- const doc={type:cur,title:def.n,date:s.date,signedAt:s.gt||Date.now(),guard:s.guard.trim(),sup:s.sup.trim(),gs:s.gs,ss:s.ss,obs:s.obs.trim(),nov,rooms,total:nov.reduce((a,x)=>a+x.c.length,0),createdAt:Date.now(),by:UID};
- const _sd=new Date(s.gt||Date.now()),_sdd=_sd.getFullYear()+"-"+String(_sd.getMonth()+1).padStart(2,"0")+"-"+String(_sd.getDate()).padStart(2,"0");
+ const doc={type:cur,title:def.n,date:s.date,signedAt:Date.now(),guard:s.guard.trim(),sup:s.sup.trim(),gs:s.gs,ss:s.ss||null,ssAt:s.ss?Date.now():null,supStatus:s.ss?"firmado":"pendiente",obs:s.obs.trim(),nov,rooms,total:nov.reduce((a,x)=>a+x.c.length,0),createdAt:Date.now(),by:UID};
+ const _sd=new Date(),_sdd=_sd.getFullYear()+"-"+String(_sd.getMonth()+1).padStart(2,"0")+"-"+String(_sd.getDate()).padStart(2,"0");
  if(s.date!==_sdd&&!await uiC("⚠ La fecha del reporte ("+s.date.split("-").reverse().join("/")+") NO coincide con el día de la firma ("+_sdd.split("-").reverse().join("/")+").\n\n¿Enviar así?"))return;
- if(!await uiC("¿Finalizar y enviar el reporte? No podrá modificarse después."))return;
+ if(!await uiC(s.ss?"¿Finalizar y enviar el reporte? No podrá modificarse después.":"¿Enviar el reporte con la firma del guarda? Quedará registrado a esta hora. El supervisor solo podrá agregar su firma; lo diligenciado no se podrá modificar."))return;
  $("#send").disabled=true;
  const id=rid;
  try{
   if(!window.FB)throw new Error("Firebase no cargó");
   await FB.add(id,doc,ph);
-  msg("✔ Reporte enviado y guardado ("+id+"). Ya aparece en el Dashboard.","good");
-  st[cur]=fresh();saveDraft();setTimeout(renderForm,2500);
+  if(s.ss){msg("✔ Reporte enviado y guardado ("+id+"). Ya aparece en el Dashboard.","good");st[cur]=fresh();saveDraft();setTimeout(renderForm,2500)}
+  else{s.sent={id,at:doc.createdAt};saveDraft();renderForm();msg("✔ Reporte enviado y registrado. Ya aparece en el Dashboard como pendiente de la firma del supervisor.","good")}
  }catch(err){
   const q=(await kv.get("pend").catch(()=>null))||[];q.push({id,doc,ph});await kv.set("pend",q).catch(()=>{});
   msg("No se pudo enviar ("+esc(err.message||err)+"). Se guardó una copia pendiente en este dispositivo; abra la página con sesión iniciada para reenviarla.","err");$("#send").disabled=false;
  }
+}
+async function sendSup(){
+ const s=st[cur];if(!s.sent)return;
+ if(!s.ss)return msg("Falta la firma del supervisor.","err");
+ if(!await uiC("¿Enviar con la firma del supervisor? Solo se agregará la firma; lo diligenciado no cambia."))return;
+ $("#sendSup").disabled=true;
+ try{
+  if(!window.FB||!FB.sign)throw new Error("Firebase no cargó");
+  await FB.sign(s.sent.id,{ss:s.ss,ssAt:Date.now(),supStatus:"firmado"});
+  msg("✔ Firma del supervisor registrada. Reporte completo.","good");
+  st[cur]=fresh();saveDraft();setTimeout(renderForm,2500);
+ }catch(err){msg("No se pudo registrar la firma ("+esc(err.message||err)+"). Intente de nuevo.","err");$("#sendSup").disabled=false}
+}
+async function closeSup(){
+ const s=st[cur];if(!s.sent)return;
+ if(!await uiC("¿Cerrar este reporte SIN la firma del supervisor? Quedará marcado como «Sin firma del supervisor» y se limpiará el formulario de este dispositivo."))return;
+ try{
+  if(!window.FB||!FB.sign)throw new Error("Firebase no cargó");
+  await FB.sign(s.sent.id,{supStatus:"sin_firma"});
+  st[cur]=fresh();saveDraft();renderForm();msg("Reporte cerrado sin firma del supervisor. Quedó indicado en el Dashboard.","good");
+ }catch(err){msg("No se pudo cerrar el reporte ("+esc(err.message||err)+"). Intente de nuevo.","err")}
 }
 async function flush(){
  if(!window.FB)return;let q=(await kv.get("pend").catch(()=>null))||[];const lg=safe(()=>JSON.parse(localStorage.getItem("pend")||"[]"),[]);if(lg.length){q=q.concat(lg);safe(()=>localStorage.removeItem("pend"))}if(!q.length)return;
@@ -322,10 +346,10 @@ function dShell(){
  $("#dash").dataset.m=m;
  if(m==="g"){
   if(DT==="rep")DT="acc";
-  $("#dash").innerHTML='<div class="dsub"><button data-dt="acc">Control de acceso</button><button data-dt="bus">Buscar ingresos</button></div><div id="dp" class="hide"></div><div id="da" class="hide"></div><div id="db" class="hide"></div><div class="row" style="margin-top:14px"><button class="btn" id="gx">Salir de vigilancia</button></div>';
+  $("#dash").innerHTML='<div class="dsub"><button data-dt="acc">Control de acceso</button><button data-dt="bus">Buscar ingresos</button><button data-dt="cit">Citas</button></div><div id="dp" class="hide"></div><div id="da" class="hide"></div><div id="db" class="hide"></div><div id="dc" class="hide"></div><div class="row" style="margin-top:14px"><button class="btn" id="gx">Salir de vigilancia</button></div>';
   dTab(DT);return;
  }
- $("#dash").innerHTML='<div class="dsub"><button data-dt="rep">Reportes</button><button data-dt="acc">Control de acceso</button><button data-dt="bus">Buscar ingresos</button></div><div id="dp"></div><div id="da" class="hide"></div><div id="db" class="hide"></div>';
+ $("#dash").innerHTML='<div class="dsub"><button data-dt="rep">Reportes</button><button data-dt="acc">Control de acceso</button><button data-dt="bus">Buscar ingresos</button><button data-dt="cit">Citas</button></div><div id="dp"></div><div id="da" class="hide"></div><div id="db" class="hide"></div><div id="dc" class="hide"></div>';
  dTab(DT);
 }
 function dTab(t){
@@ -334,8 +358,10 @@ function dTab(t){
  $("#dp").classList.toggle("hide",t!="rep");
  $("#da").classList.toggle("hide",t!="acc");
  $("#db").classList.toggle("hide",t!="bus");
+ $("#dc").classList.toggle("hide",t!="cit");
  if(t=="acc"||t=="bus"){accBuild();accLoad(true)}
  if(t=="bus")busBuild();
+ if(t=="cit")citBuild();
 }
 function guardIn(){const v=($("#gp")||{}).value||"";if(v===GUARD_PIN){GUARD=true;try{localStorage.setItem("gd","1")}catch(e){}renderDash()}else{const m=$("#gm");if(m)m.innerHTML='<div class="msg err">Clave incorrecta.</div>'}}
 document.addEventListener("click",e=>{const t=e.target;if(t&&t.id==="gi")guardIn();if(t&&t.id==="gx"){GUARD=false;try{localStorage.removeItem("gd")}catch(x){}renderDash()}});
@@ -509,6 +535,43 @@ function busRender(){
 document.addEventListener("input",e=>{if(e.target&&e.target.id==="bq")busRender()});
 document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.dataset&&d.dataset.bk){d.open?AC.bo.add(d.dataset.bk):AC.bo.delete(d.dataset.bk)}},true);
 
+/* ===== Subpestaña: Citas (llegan desde citas.html, colección "citas" del Firebase de Control de Acceso) ===== */
+const CIT={on:false,list:[],t:0};
+function citBuild(){
+ const dc=$("#dc");if(!dc)return;
+ if(!dc.dataset.b){dc.dataset.b="1";
+  dc.innerHTML='<div class="card"><div class="ac-h"><div class="ct">Citas registradas</div><span class="pill ok" id="ciN">0</span></div><div class="g"><div><label for="ciF">Fecha de la cita</label><input type="date" id="ciF" value="'+accHoyStr()+'"></div><div><label for="ciQ">Buscar por nombre o cédula</label><input id="ciQ" type="search" placeholder="Nombre o documento" autocomplete="off"></div></div><div class="row" style="margin-top:10px"><button class="btn" id="ciH">Hoy</button><button class="btn" id="ciT">Ver todas</button></div><div class="mu" id="ciS" style="margin-top:6px">Cargando citas…</div></div><div id="ciL"></div>';
+ }
+ citStart();citRender();
+}
+function citStart(){
+ if(CIT.on)return;
+ if(!window.FBA||!FBA.watchCitas){if(!CIT.t)CIT.t=setTimeout(()=>{CIT.t=0;citStart()},1000);return}
+ CIT.on=true;
+ FBA.watchCitas(l=>{CIT.list=l;citRender()},e=>{CIT.on=false;console.log(e);const s=$("#ciS");if(s)s.innerHTML='<span class="msg err">No se pudieron leer las citas: '+esc(e.code||e.message)+'</span>'});
+}
+function citHora(v){if(!/^\d{1,2}:\d{2}/.test(v||""))return esc(v||"--");const d=new Date("2000-01-01T"+String(v).padStart(5,"0")+":00");return isNaN(d)?esc(v):d.toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit"})}
+function citFecha(v){return/^\d{4}-\d{2}-\d{2}$/.test(v||"")?v.split("-").reverse().join("/"):(v||"")}
+function citRender(){
+ const L=$("#ciL");if(!L)return;
+ const f=($("#ciF")||{}).value||"",raw=($("#ciQ")||{}).value||"",q=busNorm(raw),qn=busNum(raw);
+ let a=CIT.list.filter(c=>(!f||c.fechaCita===f)&&(!q||busNorm(c.nombre).includes(q)||(qn.length>=3&&busNum(c.doc).includes(qn))));
+ const k=c=>(c.fechaCita||"")+" "+(c.horaCita||"");
+ a.sort((x,y)=>f?(k(x)<k(y)?-1:1):(k(x)<k(y)?1:-1));
+ const n=$("#ciN");if(n)n.textContent=a.length;
+ const s=$("#ciS");if(s)s.textContent=CIT.on&&!CIT.list.length?"Sin citas registradas.":(f?"Citas del "+citFecha(f):"Todas las citas")+(a.length?"":" · sin resultados");
+ const fd=(t,v)=>{const x=busFmt(v);return x?'<div><small>'+t+'</small><b>'+x+'</b></div>':""};
+ L.innerHTML=a.map(c=>{
+  const reg=c.ts&&c.ts.toDate?c.ts.toDate():null;
+  return '<div class="bp"><div class="rh"><div style="flex:1"><h3>'+esc(c.nombre||"-")+'</h3><div class="mu">Cédula: '+esc(c.doc||"-")+' · '+esc(c.rol||"-")+'</div></div><span class="pill ok">'+citHora(c.horaCita)+'</span></div><div class="mg" style="margin-top:10px">'
+   +fd("Citado(a) en",c.areaTxt||c.area)+fd("Fecha de la cita",citFecha(c.fechaCita))+fd("Hora de la cita",citHora(c.horaCita))
+   +fd("Tipo de documento",c.tipoDoc)+fd("Entidad",c.entidad)+fd("Teléfono",c.contacto)+fd("Placa",c.placa)
+   +fd("Contacto de emergencia",c.emergenciaNombre)+fd("Tel. emergencia",c.emergencia)+fd("Parentesco",c.parentesco)+fd("Registrada",reg)
+   +'</div></div>'}).join("");
+}
+document.addEventListener("input",e=>{const i=e.target&&e.target.id;if(i==="ciQ"||i==="ciF")citRender()});
+document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("#ciH,#ciT");if(!b)return;$("#ciF").value=b.id==="ciH"?accHoyStr():"";citRender()});
+
 function renderDash(){
  if(!AUTH&&GUARD){ED.on=false;dShell();return}
  if(!AUTH){ED.on=false;$("#dash").innerHTML=`<div class="card"><b>Dashboard – acceso restringido</b><p class="mu">Ingrese con su correo y contraseña de supervisor/administrador.</p><div class="g"><div><label>Correo</label><input id="le" type="email"></div><div><label>Contraseña</label><input id="lp" type="password"></div></div><div class="row" style="margin-top:10px"><button class="btn pr" id="li">Ingresar</button></div><div id="lm"></div></div><div class="card" style="margin-top:12px"><b>Vigilancia</b><p class="mu">Clave para ver el Control de acceso y dar salidas.</p><input id="gp" type="password" inputmode="numeric" autocomplete="off" placeholder="Clave"><div class="row" style="margin-top:10px"><button class="btn pr" id="gi">Entrar como vigilante</button></div><div id="gm"></div></div>`;return}
@@ -540,17 +603,17 @@ function renderDash(){
    h+=`<div class="dh"><span>${esc(nm)}</span><small>${by[d.date]} novedad(es)</small></div>`}
   const ty=d.type=="r2"?2:1,ttl=(R[d.type]?R[d.type].n:fz(d.title)).replace(/^Reporte\s*\d\s*·\s*/,""),sg=d.signedAt||d.createdAt,bad=sg&&dOf(sg)!==d.date;
   h+=`<div class="rc ${d.total?"hv":"sn"}"><div class="rh"><span class="tg t${ty}">R${ty}</span><b>${esc(tc(ttl))}</b></div>
-  <div class="rb"><span class="pill ${d.total?"":"ok"}">${d.total?d.total+" novedad(es)":"Sin novedad"}</span>${bad?'<span class="pill wn" title="La fecha del reporte no coincide con el día de la firma">Revisar fecha</span>':""}</div>
-  <div class="mg"><div><small>Guarda</small>${esc(tc(d.guard))}</div><div><small>Supervisor</small>${esc(tc(d.sup))}</div><div><small>Fecha del reporte</small>${esc(fD(d.date))}</div><div><small>Firma del guarda</small>${sg?new Date(sg).toLocaleString("es-CO",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"—"}</div></div>
+  <div class="rb"><span class="pill ${d.total?"":"ok"}">${d.total?d.total+" novedad(es)":"Sin novedad"}</span>${bad?'<span class="pill wn" title="La fecha del reporte no coincide con el día de la firma">Revisar fecha</span>':""}${d.ss?"":(d.supStatus=="sin_firma"?'<span class="pill wn">Sin firma del supervisor</span>':'<span class="pill wn">Pendiente firma del supervisor</span>')}</div>
+  <div class="mg"><div><small>Guarda</small>${esc(tc(d.guard))}</div><div><small>Supervisor</small>${esc(tc(d.sup))}</div><div><small>Fecha del reporte</small>${esc(fD(d.date))}</div><div><small>Enviado por el guarda</small>${sg?new Date(sg).toLocaleString("es-CO",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"—"}</div><div><small>Firma del supervisor</small>${d.ss?(d.ssAt?new Date(d.ssAt).toLocaleString("es-CO",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"Firmado"):(d.supStatus=="sin_firma"?"Sin firma":"Pendiente")}</div></div>
   <details><summary>Ver detalle y firmas</summary>${d.nov.map(n=>`<div class="nv"><b>${esc(n.r)}</b> <span class="mu">${esc(fz(n.s))}</span><br>${n.c.map(c=>`<span class="pill">${esc(c)}</span>`).join(" ")}${(n.fs||(n.f?[n.f]:[])).map((f,j)=>` <button class="btn" data-ph="${esc(f)}">📷 Foto ${j+1}</button>`).join("")}</div>`).join("")||'<p class="mu">Sin novedades.</p>'}
   ${d.obs?`<p><b>Observaciones:</b> ${esc(d.obs)}</p>`:""}
-  <div class="row"><div><div class="mu">Guarda</div><img class="sig" src="${d.gs}"></div><div><div class="mu">Supervisor</div><img class="sig" src="${d.ss}"></div></div></details></div>`});
+  <div class="row"><div><div class="mu">Guarda</div><img class="sig" src="${d.gs}"></div><div><div class="mu">Supervisor</div>${d.ss?`<img class="sig" src="${d.ss}">`:'<span class="mu">Sin firma</span>'}</div></div></details></div>`});
  ED.flash="";$("#dp").innerHTML=h;$("#fl").value=f;$("#ft").value=ft;
  $("#fc").onclick=()=>{$("#fl").value="";$("#ft").value="";FB.setRange(FB.defFrom(),"",FB.pg);renderDash()};
  $("#fl").onchange=$("#ft").onchange=renderDash;
  $("#fr1").onchange=$("#fr2").onchange=()=>FB.setRange($("#fr1").value,$("#fr2").value,FB.pg);if($("#fmore"))$("#fmore").onclick=()=>FB.setRange(RG.from,RG.to,RG.n+FB.pg);
- $("#csv").onclick=async()=>{const rows=[["Reporte","Fecha","Firma guarda","Guarda","Supervisor","Sección","Aula","Novedades","Fotos","Observaciones"]];
-  L.forEach(d=>{if(!d.nov.length)rows.push([fz(d.title),d.date,new Date(d.signedAt||d.createdAt).toISOString(),d.guard,d.sup,"","","Sin novedad","",d.obs]);d.nov.forEach(n=>rows.push([fz(d.title),d.date,new Date(d.signedAt||d.createdAt).toISOString(),d.guard,d.sup,fz(n.s),n.r,n.c.join("; "),(n.fs||(n.f?[n.f]:[])).length||"",d.obs]))});
+ $("#csv").onclick=async()=>{const rows=[["Reporte","Fecha","Firma guarda","Guarda","Supervisor","Sección","Aula","Novedades","Fotos","Observaciones","Firma supervisor"]];
+  L.forEach(d=>{if(!d.nov.length)rows.push([fz(d.title),d.date,new Date(d.signedAt||d.createdAt).toISOString(),d.guard,d.sup,"","","Sin novedad","",d.obs,supTxt(d)]);d.nov.forEach(n=>rows.push([fz(d.title),d.date,new Date(d.signedAt||d.createdAt).toISOString(),d.guard,d.sup,fz(n.s),n.r,n.c.join("; "),(n.fs||(n.f?[n.f]:[])).length||"",d.obs,supTxt(d)]))});
   const data="\ufeff"+rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(",")).join("\n");
   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([data],{type:"text/csv;charset=utf-8"}));a.download="reportes-novedades.csv";a.click()};
  if($("#lo"))$("#lo").onclick=()=>FB.logout();
@@ -691,7 +754,7 @@ $("#pf").addEventListener("change",async e=>{
 });
 document.addEventListener("click",async e=>{
  const t=e.target,pc=t.closest&&t.closest("td.p"),act=t.dataset&&t.dataset.pv,dp=t.dataset&&t.dataset.ph;
- if(pc){const k=pc.dataset.p,a=st[cur].photos[k]||[],j=t.dataset?t.dataset.j:undefined;
+ if(pc){if(st[cur].sent)return;const k=pc.dataset.p,a=st[cur].photos[k]||[],j=t.dataset?t.dataset.j:undefined;
   if(j!==undefined&&a[+j])pvShow(a[+j],k,+j);else if(a.length<MAXF)pick(k,null);
   return}
  if(act){const o=$("#pv")||{dataset:{}},k=o.dataset.k,j=+o.dataset.j;pvClose();
@@ -809,7 +872,7 @@ async function makePdf(kind){
   pill("Reportes del período y firmas",M,y,CW);
   doc.autoTable(Object.assign({},tblBase,{startY:y+9,
    head:[["Fecha","Reporte","Guarda","Firma","Supervisor","Firma","Novedades"]],
-   body:L.map(d=>[fmtD(d.date),d.type=="r1"?"Reporte 1":"Reporte 2",d.guard,"",d.sup,"",d.rt?d.rt+" novedad(es)":"Sin novedad"]),
+   body:L.map(d=>[fmtD(d.date),d.type=="r1"?"Reporte 1":"Reporte 2",d.guard,"",d.sup,d.ss?"":(d.supStatus=="sin_firma"?"Sin firma":"Pendiente"),d.rt?d.rt+" novedad(es)":"Sin novedad"]),
    bodyStyles:{minCellHeight:12},
    columnStyles:{0:{cellWidth:20,halign:"center"},1:{cellWidth:18,halign:"center"},3:{cellWidth:26},5:{cellWidth:26},6:{cellWidth:24,halign:"center"}},
    didDrawCell:h=>{if(h.section!="body"||(h.column.index!=3&&h.column.index!=5))return;
@@ -846,9 +909,9 @@ async function makePdf(kind){
 /* ===== Autoguardado: todo lo escrito queda en el dispositivo y se restaura al volver ===== */
 let READY=false,VIEW="r1",SCR=0;
 let SD;function saveDraft(){if(!READY)return;clearTimeout(SD);SD=setTimeout(saveNow,250)}
-function saveNow(){if(!READY)return;clearTimeout(SD);const o={view:VIEW,y:Math.round(window.scrollY||0)};["r1","r2"].forEach(id=>{const x=st[id];o[id]={marks:[...x.marks],date:x.date,guard:x.guard,sup:x.sup,obs:x.obs,gs:x.gs,ss:x.ss,gt:x.gt,photos:x.photos}});kv.set("draft",o).catch(()=>{const e=$("#cnt");if(e)e.textContent="⚠ No se pudo guardar el borrador en este dispositivo."})}
+function saveNow(){if(!READY)return;clearTimeout(SD);const o={view:VIEW,y:Math.round(window.scrollY||0)};["r1","r2"].forEach(id=>{const x=st[id];o[id]={marks:[...x.marks],date:x.date,guard:x.guard,sup:x.sup,obs:x.obs,gs:x.gs,ss:x.ss,gt:x.gt,sent:x.sent||null,photos:x.photos}});kv.set("draft",o).catch(()=>{const e=$("#cnt");if(e)e.textContent="⚠ No se pudo guardar el borrador en este dispositivo."})}
 async function restoreDraft(){try{let o=await kv.get("draft");if(!o){o=safe(()=>JSON.parse(localStorage.getItem("draft")||"null"),null);if(o){await kv.set("draft",o);safe(()=>localStorage.removeItem("draft"))}}if(!o)return;
- ["r1","r2"].forEach(id=>{const d=o[id];if(!d)return;st[id]={marks:new Set(d.marks||[]),date:(d.date&&d.date>=today())?d.date:today(),guard:d.guard||"",sup:d.sup||"",obs:d.obs||"",gs:d.gs||null,ss:d.ss||null,gt:d.gt||null,photos:normPh(d.photos)}});
+ ["r1","r2"].forEach(id=>{const d=o[id];if(!d)return;st[id]={marks:new Set(d.marks||[]),date:(d.sent||(d.date&&d.date>=today()))?d.date:today(),guard:d.guard||"",sup:d.sup||"",obs:d.obs||"",gs:d.gs||null,ss:d.ss||null,gt:d.gt||null,sent:d.sent||null,photos:normPh(d.photos)}});
  if(o.view=="r1"||o.view=="r2"||o.view=="dash")VIEW=o.view;if(VIEW!="dash")cur=VIEW;SCR=o.y||0}catch(e){}}
 safe(()=>applyLayout(JSON.parse(localStorage.getItem("lay"))));
 let _t;
@@ -883,15 +946,16 @@ const _go=()=>window.scrollTo(0,SCR);_go();setTimeout(_go,150);setTimeout(_go,60
 })();</script><script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js";
 import {getAuth,signInAnonymously,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
-import {getFirestore,doc,setDoc,getDoc,deleteDoc,writeBatch,collection,query,where,orderBy,limit,onSnapshot,serverTimestamp} from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+import {getFirestore,doc,setDoc,getDoc,deleteDoc,writeBatch,updateDoc,collection,query,where,orderBy,limit,onSnapshot,serverTimestamp} from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
 // ====== PEGUE AQUÍ SU CONFIGURACIÓN DE FIREBASE (Configuración del proyecto → Tus apps → Web) ======
 const firebaseConfig={apiKey:"AIzaSyBBzKShRsFtf65AXnMWOJlVl0hCAzcAyGY",authDomain:"formato-de-reporte-diario.firebaseapp.com",projectId:"formato-de-reporte-diario",storageBucket:"formato-de-reporte-diario.firebasestorage.app",messagingSenderId:"462001738427",appId:"1:462001738427:web:47010f745d50c40d324f9e"};
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);let unsub=null,lunsub=null,runs={};
 /* ===== Segunda app: Firebase del CONTROL DE ACCESO (colección "movimientos") ===== */
-const appA=initializeApp({apiKey:"AIzaSyBfdtZjGnnRW3W1B02kq_2YgshWuuSZr2o",authDomain:"control-de-acceso-b04a4.firebaseapp.com",projectId:"control-de-acceso-b04a4",storageBucket:"control-de-acceso-b04a4.firebasestorage.app",messagingSenderId:"212919729909",appId:"1:212919729909:web:0614f098a98616c4e2cfbc"},"acceso"),dbA=getFirestore(appA);let aun=null;
+const appA=initializeApp({apiKey:"AIzaSyBfdtZjGnnRW3W1B02kq_2YgshWuuSZr2o",authDomain:"control-de-acceso-b04a4.firebaseapp.com",projectId:"control-de-acceso-b04a4",storageBucket:"control-de-acceso-b04a4.firebasestorage.app",messagingSenderId:"212919729909",appId:"1:212919729909:web:0614f098a98616c4e2cfbc"},"acceso"),dbA=getFirestore(appA);let aun=null,cun=null;
 window.FBA={
  watch:(ok,err)=>{if(aun)return;aun=onSnapshot(query(collection(dbA,"movimientos"),orderBy("ts","desc"),limit(5000)),s=>ok(s.docs.map(d=>d.data({serverTimestamps:"estimate"}))),e=>{aun=null;err(e)})},
- salida:o=>setDoc(doc(collection(dbA,"movimientos")),Object.assign({tipo:"SALIDA"},o,{ts:serverTimestamp()}))
+ salida:o=>setDoc(doc(collection(dbA,"movimientos")),Object.assign({tipo:"SALIDA"},o,{ts:serverTimestamp()})),
+ watchCitas:(ok,err)=>{if(cun)return;cun=onSnapshot(query(collection(dbA,"citas"),orderBy("ts","desc"),limit(2000)),s=>ok(s.docs.map(d=>Object.assign({id:d.id},d.data({serverTimestamps:"estimate"})))),e=>{cun=null;err(e)})}
 };
 const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"),defFrom=()=>{const d=new Date();return iso(new Date(d.getFullYear(),d.getMonth()-1,1))},PG=150;
 let RG={from:defFrom(),to:"",n:PG};
@@ -903,6 +967,7 @@ window.FB={
   const b=writeBatch(db);b.set(doc(db,"reportes",id),d);
   ph.forEach(p=>b.set(doc(db,"evidencias",p.id),{r:id,d:p.d,createdAt:Date.now(),by:UID}));
   return b.commit()},
+ sign:(id,o)=>updateDoc(doc(db,"reportes",id),o),
  photo:async id=>{const x=await getDoc(doc(db,"evidencias",id));if(!x.exists())throw new Error("sin foto");return x.data().d},
  login:(e,p)=>signInWithEmailAndPassword(auth,e,p),
  logout:async()=>{await signOut(auth)},

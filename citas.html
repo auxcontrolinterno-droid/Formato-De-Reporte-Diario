@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Citas</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;}
+body{
+  font-family:'Inter',sans-serif;
+  background:linear-gradient(135deg,#e9eef5,#dfe7f1);
+  margin:0;
+  text-align:center;
+}
+.header{
+  background:white;
+  padding:10px 0;
+  border-bottom:2px solid #0b3d91;
+  box-shadow:0 2px 6px rgba(0,0,0,.05);
+}
+.header img{width:70%;max-width:280px;height:auto;}
+.container{
+  background:white;
+  width:92%;
+  max-width:400px;
+  margin:20px auto 30px;
+  padding:22px;
+  border-radius:18px;
+  box-shadow:0 10px 25px rgba(0,0,0,.08);
+}
+h2{margin:0 0 8px;color:#0b3d91;font-size:24px;font-weight:700;}
+.mensaje{font-size:14px;color:#444;margin-bottom:14px;min-height:20px;}
+.mensaje.ok{color:#15803d;font-weight:700;font-size:16px;}
+.mensaje.error{color:#b91c1c;font-weight:600;}
+
+input,select{
+  width:100%;
+  padding:12px;
+  border-radius:10px;
+  border:1px solid #ccc;
+  margin-bottom:12px;
+  outline:none;
+  font-family:'Inter',sans-serif;
+  font-size:16px; /* evita el zoom automático en iPhone */
+  background:#fff;
+}
+input:focus,select:focus{border-color:#0b3d91;}
+label{display:block;text-align:left;font-size:12px;color:#555;margin:0 0 4px 4px;}
+.fila{display:flex;gap:8px;}
+.fila > *{flex:1;min-width:0;}
+
+.btn{
+  width:100%;
+  padding:15px;
+  border:none;
+  border-radius:12px;
+  color:white;
+  font-size:16px;
+  font-weight:600;
+  margin-bottom:10px;
+  cursor:pointer;
+  font-family:'Inter',sans-serif;
+}
+.btn:disabled{opacity:.6;cursor:wait;}
+.ingreso{background:#0b3d91;}
+.salida{background:#c62828;}
+
+.resumen{
+  background:#f1f6ff;border:1px solid #cfe0ff;border-radius:14px;
+  padding:14px;margin-bottom:14px;text-align:left;
+}
+.resumen strong{display:block;font-size:17px;color:#0b3d91;}
+.resumen span{font-size:13px;color:#555;}
+.link{
+  background:none;border:none;color:#0b3d91;text-decoration:underline;
+  font-size:13px;cursor:pointer;padding:6px;margin-top:6px;font-family:'Inter',sans-serif;
+}
+.hidden{display:none !important;}
+.footer{font-size:11px;margin-top:18px;line-height:1.4;}
+.footer .departamento{color:#0b3d91;font-weight:700;}
+.footer .corporacion{color:#000;font-weight:700;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <img src="logo.jpg" alt="Altamira International School">
+</div>
+
+<div class="container">
+  <h2>Registro de Citas</h2>
+  <div class="mensaje" id="mensaje">Escriba su número de documento para registrar su cita</div>
+
+  <!-- 1 · Documento -->
+  <div id="zonaDoc">
+    <select id="tipoDocInput" onchange="render()">
+      <option value="Cedula de Ciudadania" selected>Cédula de Ciudadanía</option>
+      <option value="Tarjeta de Identidad">Tarjeta de Identidad</option>
+      <option value="Cedula de Extranjeria">Cédula de Extranjería</option>
+      <option value="Pasaporte">Pasaporte</option>
+    </select>
+    <input id="docInput" placeholder="Número de documento" inputmode="numeric"
+           autocomplete="off" enterkeyhint="next" oninput="alEscribirDoc()">
+  </div>
+
+  <!-- 2 · Datos y acciones (aparecen solos al escribir el documento) -->
+  <div id="zonaDatos" class="hidden">
+
+    <!-- Persona que ya vino antes: un solo toque -->
+    <div id="resumen" class="resumen hidden">
+      <strong id="resNombre"></strong>
+      <span id="resDetalle"></span><br>
+      <button type="button" class="link" onclick="editar()">Editar mis datos</button>
+    </div>
+
+    <!-- Persona nueva (o que edita sus datos) -->
+    <div id="campos" class="hidden">
+      <label for="nombre">Nombre completo *</label>
+      <input id="nombre" autocomplete="name" autocapitalize="words" enterkeyhint="next">
+
+      <label for="contacto">Teléfono de contacto *</label>
+      <input id="contacto" inputmode="tel" autocomplete="tel" enterkeyhint="next">
+
+      <label for="entidad">Empresa / entidad</label>
+      <input id="entidad" list="listaEntidades" autocapitalize="words" enterkeyhint="next">
+      <datalist id="listaEntidades"></datalist>
+
+      <label for="placa">Placa del vehículo (si aplica)</label>
+      <input id="placa" autocapitalize="characters" maxlength="8" enterkeyhint="next">
+
+      <label for="emergenciaNombre">Nombre del contacto de emergencia</label>
+      <input id="emergenciaNombre" autocapitalize="words" enterkeyhint="next">
+
+      <div class="fila">
+        <div>
+          <label for="emergencia">Teléfono emergencia</label>
+          <input id="emergencia" inputmode="tel" enterkeyhint="next">
+        </div>
+        <div>
+          <label for="parentesco">Parentesco</label>
+          <input id="parentesco" list="listaParentesco" autocapitalize="words" enterkeyhint="done">
+          <datalist id="listaParentesco">
+            <option value="Madre"><option value="Padre"><option value="Esposo(a)">
+            <option value="Hijo(a)"><option value="Hermano(a)"><option value="Amigo(a)">
+            <option value="Compañero(a) de trabajo"><option value="Otro">
+          </datalist>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cita: área, sección, profesional, fecha y hora -->
+    <div id="zonaCita">
+      <label for="area">Área a la que fue citado(a) *</label>
+      <select id="area" onchange="alCambiarArea()">
+        <option value="">Seleccione…</option>
+        <option value="Admisiones">Admisiones</option>
+        <option value="Recursos humanos">Recursos humanos</option>
+        <option value="SST">SST</option>
+        <option value="Vicerrectorías">Vicerrectorías</option>
+        <option value="Psicologías">Psicologías</option>
+        <option value="Convivencia y disciplina">Convivencia y disciplina</option>
+      </select>
+
+      <div id="zonaSec" class="hidden">
+        <label for="seccion">Sección *</label>
+        <select id="seccion" onchange="alCambiarSeccion()"></select>
+      </div>
+
+      <div id="zonaProf" class="hidden">
+        <label for="profesional">Psicólogo(a) *</label>
+        <select id="profesional"></select>
+      </div>
+
+      <div class="fila">
+        <div>
+          <label for="fechaCita">Fecha de la cita *</label>
+          <input type="date" id="fechaCita">
+        </div>
+        <div>
+          <label for="horaCita">Hora de la cita *</label>
+          <input type="time" id="horaCita">
+        </div>
+      </div>
+    </div>
+
+    <button class="btn ingreso" id="btnCita" onclick="registrarCita()">Registrar cita</button>
+  </div>
+
+  <div class="footer">
+    <div class="departamento">DEPARTAMENTO DE CONTROL INTERNO DE SEGURIDAD E INFRAESTRUCTURA</div>
+    <div class="corporacion">CORPORACION COLEGIO INTERNACIONAL ALTAMIRA</div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBfdtZjGnnRW3W1B02kq_2YgshWuuSZr2o",
+  authDomain: "control-de-acceso-b04a4.firebaseapp.com",
+  projectId: "control-de-acceso-b04a4",
+  storageBucket: "control-de-acceso-b04a4.firebasestorage.app",
+  messagingSenderId: "212919729909",
+  appId: "1:212919729909:web:0614f098a98616c4e2cfbc"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+function hoyStr(){
+  const d = new Date();
+  const p = n => String(n).padStart(2, "0");
+  return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+}
+function normalizarRol(r){
+  return String(r || "").trim().toUpperCase();
+}
+</script>
+<script>
+const $ = id => document.getElementById(id);
+
+const ROL = "VISITANTE";   // todas las personas que registran cita son visitantes
+let persona = null;      // ficha guardada (si ya vino antes)
+let buscado = "";        // documento ya consultado
+let cargando = false;
+let editando = false;
+let llenado = false;     // los campos tienen datos de una persona guardada
+let timer = null;
+let seq = 0;
+
+const CAMPOS = ["nombre","contacto","entidad","placa","emergenciaNombre","emergencia","parentesco"];
+
+function msg(texto, tipo){
+  const m = $("mensaje");
+  m.innerText = texto;
+  m.className = "mensaje" + (tipo ? " " + tipo : "");
+}
+
+/* ID del documento = número de documento (sin "/" ni espacios) */
+function idDoc(v){ return String(v || "").trim().replace(/[\/\s.]/g, ""); }
+
+function esConocido(){ return !!(persona && persona.nombre && persona.contacto); }
+
+/* ---------- Empresas usadas antes en este equipo (sugerencias, se puede escribir otra) ---------- */
+function cargarEntidades(){
+  try{
+    const lista = JSON.parse(localStorage.getItem("entidades") || "[]");
+    const dl = $("listaEntidades");
+    dl.innerHTML = "";
+    lista.forEach(e => { const o = document.createElement("option"); o.value = e; dl.appendChild(o); });
+  }catch(e){}
+}
+function recordarEntidad(e){
+  if(!e) return;
+  try{
+    let lista = JSON.parse(localStorage.getItem("entidades") || "[]");
+    lista = [e, ...lista.filter(x => x.toLowerCase() !== e.toLowerCase())].slice(0, 40);
+    localStorage.setItem("entidades", JSON.stringify(lista));
+  }catch(err){}
+}
+cargarEntidades();
+
+/* ---------- Paso 1: documento → búsqueda automática ---------- */
+function alEscribirDoc(){
+  clearTimeout(timer);
+  seq++;
+  const d = idDoc($("docInput").value);
+
+  if(llenado){ limpiarCampos(); llenado = false; }
+  persona = null; editando = false; buscado = "";
+
+  if(d.length < 4){
+    cargando = false;
+    msg("Escriba su número de documento para registrar su cita");
+    render();
+    return;
+  }
+  cargando = true;
+  msg("Buscando…");
+  render();
+  timer = setTimeout(() => buscarPersona(d), 300);
+}
+
+async function buscarPersona(d){
+  const mi = seq;
+  let p = null;
+  try{
+    const snap = await db.collection("personas").doc(d).get();
+    p = snap.exists ? snap.data() : null;
+  }catch(e){ console.error(e); msg("Error al buscar: " + (e.code || e.message), "error"); }
+  if(mi !== seq) return;          // el usuario siguió escribiendo
+
+  persona = p;
+  buscado = d;
+  cargando = false;
+
+  if(persona){
+    if(persona.tipoDoc) $("tipoDocInput").value = persona.tipoDoc;
+    llenarCampos(persona);
+    llenado = true;
+  }
+
+  if(esConocido()){
+    msg("Bienvenido nuevamente, " + persona.nombre.split(" ")[0] + " 👋");
+  }else{
+    msg("Bienvenido a nuestras instalaciones 😊 Complete sus datos");
+  }
+  render();
+}
+
+const SECCIONES_VICE = ["Nido","Preprimaria","Primaria","Bachillerato"];
+const PSICOLOGAS = {
+  "Preprimaria": ["María Nelly Urbina","Vanessa Chain","Silvia De Moya Duran"],
+  "Primaria": ["Natalia Noguera","Ángela Torres"],
+  "Bachillerato": ["Alejandra Gómez Franco","Hugo Santander"]
+};
+
+function llenarSelect(id, lista, rotulo){
+  const s = $(id);
+  s.innerHTML = '<option value="">' + rotulo + '</option>' +
+    lista.map(x => '<option value="' + x + '">' + x + '</option>').join("");
+}
+
+function alCambiarArea(){
+  const a = $("area").value;
+  $("zonaProf").classList.add("hidden"); $("profesional").value = "";
+  if(a === "Vicerrectorías"){
+    llenarSelect("seccion", SECCIONES_VICE, "Seleccione…");
+    $("zonaSec").classList.remove("hidden");
+  }else if(a === "Psicologías"){
+    llenarSelect("seccion", Object.keys(PSICOLOGAS), "Seleccione…");
+    $("zonaSec").classList.remove("hidden");
+  }else{
+    $("zonaSec").classList.add("hidden"); $("seccion").value = "";
+  }
+}
+function alCambiarSeccion(){
+  const a = $("area").value, s = $("seccion").value;
+  if(a === "Psicologías" && s){
+    llenarSelect("profesional", PSICOLOGAS[s], "Seleccione…");
+    $("zonaProf").classList.remove("hidden");
+  }else{
+    $("zonaProf").classList.add("hidden"); $("profesional").value = "";
+  }
+}
+function iniciarCita(){
+  $("fechaCita").value = hoyStr();
+  $("fechaCita").min = hoyStr();
+  $("horaCita").value = "";
+  $("area").value = "";
+  alCambiarArea();
+}
+iniciarCita();
+
+function llenarCampos(p){ CAMPOS.forEach(c => { $(c).value = p[c] || ""; }); }
+function limpiarCampos(){ CAMPOS.forEach(c => { $(c).value = ""; }); }
+function leerCampos(){
+  const o = {};
+  CAMPOS.forEach(c => { o[c] = $(c).value.trim(); });
+  o.placa = o.placa.toUpperCase().replace(/[\s-]/g, "");
+  return o;
+}
+
+function editar(){
+  editando = true;
+  render();
+  $("nombre").focus();
+}
+
+/* ---------- Qué se muestra en cada momento ---------- */
+function render(){
+  const d = idDoc($("docInput").value);
+  const listo = d.length >= 4 && !cargando && buscado === d;
+  const conocido = esConocido();
+
+  $("zonaDatos").classList.toggle("hidden", !listo);
+  if(!listo) return;
+
+  const resumen = conocido && !editando;
+  $("resumen").classList.toggle("hidden", !resumen);
+  $("campos").classList.toggle("hidden", resumen);
+
+  if(resumen){
+    $("resNombre").innerText = persona.nombre;
+    $("resDetalle").innerText = [persona.entidad, persona.placa].filter(Boolean).join(" · ");
+  }
+
+}
+
+/* ---------- Registrar cita ---------- */
+async function registrarCita(){
+  const doc = idDoc($("docInput").value);
+  const tipoDoc = $("tipoDocInput").value;
+  if(!doc || !tipoDoc){ msg("Complete todos los campos", "error"); return; }
+
+  const usarGuardados = esConocido() && !editando;
+  const datos = usarGuardados ? {
+    nombre: persona.nombre || "",
+    contacto: persona.contacto || "",
+    entidad: persona.entidad || "",
+    placa: persona.placa || "",
+    emergenciaNombre: persona.emergenciaNombre || "",
+    emergencia: persona.emergencia || "",
+    parentesco: persona.parentesco || ""
+  } : leerCampos();
+
+  if(datos.nombre.length < 3){ msg("Escriba su nombre completo", "error"); $("nombre").focus(); return; }
+  if(datos.contacto.replace(/\D/g, "").length < 7){ msg("Escriba un teléfono válido", "error"); $("contacto").focus(); return; }
+
+  const area = $("area").value, seccion = $("seccion").value, prof = $("profesional").value;
+  const fechaCita = $("fechaCita").value, horaCita = $("horaCita").value;
+  if(!area){ msg("Seleccione el área a la que fue citado(a)", "error"); $("area").focus(); return; }
+  if((area === "Vicerrectorías" || area === "Psicologías") && !seccion){ msg("Seleccione la sección", "error"); $("seccion").focus(); return; }
+  if(area === "Psicologías" && !prof){ msg("Seleccione el psicólogo(a)", "error"); $("profesional").focus(); return; }
+  if(!fechaCita){ msg("Seleccione la fecha de la cita", "error"); $("fechaCita").focus(); return; }
+  if(!horaCita){ msg("Seleccione la hora de la cita", "error"); $("horaCita").focus(); return; }
+
+  const areaTxt = [area, seccion, prof].filter(Boolean).join(" - ");
+
+  const btn = $("btnCita");
+  btn.disabled = true;
+  try{
+    const ts = firebase.firestore.FieldValue.serverTimestamp();
+    const batch = db.batch();
+
+    batch.set(db.collection("personas").doc(doc), {
+      ...datos, doc, tipoDoc, rol: (persona && persona.rol) || ROL, actualizado: ts
+    }, { merge: true });
+
+    batch.set(db.collection("citas").doc(), {
+      tipo: "CITA", rol: ROL, tipoDoc, doc, ...datos,
+      area, seccion, profesional: prof, areaTxt,
+      fechaCita, horaCita, fechaDia: hoyStr(), ts
+    });
+
+    await batch.commit();
+    recordarEntidad(datos.entidad);
+    cargarEntidades();
+    terminar("✅ Cita registrada. ¡Gracias, " + datos.nombre.split(" ")[0] + "!");
+  }catch(e){
+    console.error(e);
+    msg("No se pudo registrar. Error: " + (e.code || e.message), "error");
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+/* Deja el formulario listo para la siguiente persona */
+function terminar(texto){
+  seq++;
+  persona = null; buscado = ""; cargando = false; editando = false; llenado = false;
+  $("docInput").value = "";
+  $("tipoDocInput").value = "Cedula de Ciudadania";
+  limpiarCampos();
+  iniciarCita();
+  render();
+  msg(texto, "ok");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/* ---------- Enter / "Siguiente" del teclado salta al próximo campo ---------- */
+document.addEventListener("keydown", e => {
+  if(e.key !== "Enter" || e.target.tagName !== "INPUT") return;
+  e.preventDefault();
+
+  if(e.target.id === "docInput"){
+    if(!$("campos").classList.contains("hidden")) $("nombre").focus();
+    else e.target.blur();
+    return;
+  }
+  const inputs = [...$("campos").querySelectorAll("input")];
+  const i = inputs.indexOf(e.target);
+  if(i === -1) return;
+  if(i < inputs.length - 1) inputs[i + 1].focus();
+  else registrarCita();
+});
+</script>
+</body>
+</html>
