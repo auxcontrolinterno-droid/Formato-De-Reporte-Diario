@@ -567,8 +567,27 @@ function citRender(){
    +fd("Citado(a) en",c.areaTxt||c.area)+fd("Fecha de la cita",citFecha(c.fechaCita))+fd("Hora de la cita",citHora(c.horaCita))
    +fd("Tipo de documento",c.tipoDoc)+fd("Entidad",c.entidad)+fd("Teléfono",c.contacto)+fd("Placa",c.placa)
    +fd("Contacto de emergencia",c.emergenciaNombre)+fd("Tel. emergencia",c.emergencia)+fd("Parentesco",c.parentesco)+fd("Registrada",reg)
-   +'</div></div>'}).join("");
+   +'</div>'+citAct(c)+'</div>'}).join("");
 }
+const CITP={};
+function citAct(c){
+ if(c.ingresoAt){const t=c.ingresoAt.toDate?c.ingresoAt.toDate():null;return '<div class="row" style="margin-top:10px"><span class="pill ok">✅ Ingresó'+(t?" a las "+accHora(t):"")+'</span></div>'}
+ if(c.fechaCita!==accHoyStr())return "";
+ return '<div class="row" style="margin-top:10px"><button class="btn pr" data-ci="'+esc(c.id)+'">Ingresar</button></div>'}
+async function citIngresar(id){
+ const c=CIT.list.find(x=>x.id===id),s=$("#ciS");
+ if(!c||c.ingresoAt||CITP[id])return;
+ if(c.fechaCita!==accHoyStr()){if(s)s.innerHTML='<span class="msg err">Solo se puede ingresar el día de la cita.</span>';return}
+ if(!window.FBA||!FBA.ingreso){if(s)s.innerHTML='<span class="msg err">Firebase aún no carga.</span>';return}
+ if(!await uiC("¿Registrar el ingreso de "+(c.nombre||c.doc)+"?"))return;
+ CITP[id]=1;
+ try{
+  await FBA.ingreso(id,{rol:String(c.rol||"VISITANTE").trim().toUpperCase(),tipoDoc:c.tipoDoc||"",doc:c.doc||"",nombre:c.nombre||"",contacto:c.contacto||"",entidad:c.entidad||"",placa:c.placa||"",emergenciaNombre:c.emergenciaNombre||"",emergencia:c.emergencia||"",parentesco:c.parentesco||"",destino:c.areaTxt||c.area||"",fechaDia:accHoyStr(),cita:true,citaId:id});
+  if(s)s.innerHTML='<span class="msg good">✅ Ingreso registrado: '+esc(c.nombre||c.doc)+'. Ya aparece en Control de acceso.</span>';
+ }catch(e){console.log(e);if(s)s.innerHTML='<span class="msg err">No se pudo registrar el ingreso: '+esc(e.code||e.message)+'</span>'}
+ finally{delete CITP[id]}
+}
+document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-ci]");if(b)citIngresar(b.dataset.ci)});
 document.addEventListener("input",e=>{const i=e.target&&e.target.id;if(i==="ciQ"||i==="ciF")citRender()});
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("#ciH,#ciT");if(!b)return;$("#ciF").value=b.id==="ciH"?accHoyStr():"";citRender()});
 
@@ -951,10 +970,13 @@ import {getFirestore,doc,setDoc,getDoc,deleteDoc,writeBatch,updateDoc,collection
 const firebaseConfig={apiKey:"AIzaSyBBzKShRsFtf65AXnMWOJlVl0hCAzcAyGY",authDomain:"formato-de-reporte-diario.firebaseapp.com",projectId:"formato-de-reporte-diario",storageBucket:"formato-de-reporte-diario.firebasestorage.app",messagingSenderId:"462001738427",appId:"1:462001738427:web:47010f745d50c40d324f9e"};
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);let unsub=null,lunsub=null,runs={};
 /* ===== Control de acceso y citas: ahora en el MISMO Firebase que los reportes ===== */
-const dbA=db; /* mismo proyecto Firebase para reportes, accesos y citas */let aun=null,cun=null;
+/* Control de acceso y citas viven en su PROPIO proyecto Firebase (control-de-acceso-b04a4); aquí se leen en vivo con una 2ª app */
+const appA=initializeApp({apiKey:"AIzaSyBfdtZjGnnRW3W1B02kq_2YgshWuuSZr2o",authDomain:"control-de-acceso-b04a4.firebaseapp.com",projectId:"control-de-acceso-b04a4",storageBucket:"control-de-acceso-b04a4.firebasestorage.app",messagingSenderId:"212919729909",appId:"1:212919729909:web:0614f098a98616c4e2cfbc",measurementId:"G-NHMT8KJ8WR"},"acceso");
+const dbA=getFirestore(appA);let aun=null,cun=null;
 window.FBA={
  watch:(ok,err)=>{if(aun)return;aun=onSnapshot(query(collection(dbA,"movimientos"),orderBy("ts","desc"),limit(5000)),s=>ok(s.docs.map(d=>d.data({serverTimestamps:"estimate"}))),e=>{aun=null;err(e)})},
  salida:o=>setDoc(doc(collection(dbA,"movimientos")),Object.assign({tipo:"SALIDA"},o,{ts:serverTimestamp()})),
+ ingreso:(cid,o)=>{const b=writeBatch(dbA);b.set(doc(collection(dbA,"movimientos")),Object.assign({tipo:"INGRESO"},o,{ts:serverTimestamp()}));b.update(doc(dbA,"citas",cid),{ingresoAt:serverTimestamp(),ingresoPor:(auth.currentUser&&auth.currentUser.email)||"vigilancia"});return b.commit()},
  watchCitas:(ok,err)=>{if(cun)return;cun=onSnapshot(query(collection(dbA,"citas"),orderBy("ts","desc"),limit(2000)),s=>ok(s.docs.map(d=>Object.assign({id:d.id},d.data({serverTimestamps:"estimate"})))),e=>{cun=null;err(e)})}
 };
 const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"),defFrom=()=>{const d=new Date();return iso(new Date(d.getFullYear(),d.getMonth()-1,1))},PG=150;
