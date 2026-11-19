@@ -217,7 +217,7 @@ const $=s=>document.querySelector(s),esc=s=>String(s).replace(/[&<>"]/g,c=>({"&"
 let cur="r1",st={r1:null,r2:null},UID=null,AUTH=false,all=[];
 function setAll(a,au){all=a;AUTH=au;if(!$("#dash").classList.contains("hide"))renderDash()}
 const today=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
-const fresh=()=>({marks:new Set(),photos:{},gt:null,date:today(),guard:"",sup:"",obs:"",gs:null,ss:null,sent:null});
+const fresh=()=>({marks:new Set(),photos:{},gt:null,date:today(),guard:"",sup:"",obs:"",obsSup:"",obsSF:"",gs:null,ss:null,sent:null});
 st.r1=fresh();st.r2=fresh();
 function safe(f,d){try{return f()}catch(e){return d}}
 const kv=(()=>{let p;const o=()=>p||(p=new Promise((r,j)=>{const q=indexedDB.open("altamira",1);q.onupgradeneeded=()=>q.result.createObjectStore("k");q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error)}));const t=(m,f)=>o().then(d=>new Promise((r,j)=>{const x=d.transaction("k",m),q=f(x.objectStore("k"));x.oncomplete=()=>r(q&&q.result);x.onerror=x.onabort=()=>j(x.error)}));return{get:k=>t("readonly",s=>s.get(k)),set:(k,v)=>t("readwrite",s=>s.put(v,k))}})();
@@ -239,15 +239,16 @@ function renderForm(){
  h+=`<div class="card" style="margin-top:14px"><label>Observaciones generales (opcional)</label><textarea id="ob" rows="3"${lk}>${esc(s.obs)}</textarea></div>
  <div class="card"><div class="g">
  <div><label>Guarda de turno – NOMBRES Y APELLIDOS</label><input id="gn" list="dl-n" autocomplete="off" value="${esc(s.guard)}"${lk}><label style="margin-top:8px">Firma</label><div class="sigbox" id="gb">${sigHtml(s.gs)}</div>${s.sent?"":`<button class="btn" id="gbt" data-sig="gc">${s.gs?"Cambiar firma":"Firmar"}</button>`}</div>
- <div><label>Supervisor de turno – NOMBRES Y APELLIDOS</label><input id="sn" list="dl-n" autocomplete="off" value="${esc(s.sup)}"><label style="margin-top:8px">Firma</label><div class="sigbox" id="sb">${sigHtml(s.ss)}</div><button class="btn" id="sbt" data-sig="sc">${s.ss?"Cambiar firma":"Firmar"}</button></div></div>
- <div id="fm"></div><datalist id="dl-n">${dutyNames().map(n=>`<option value="${esc(n)}">`).join("")}</datalist>${s.sent?`<div class="msg good" style="margin-top:12px">✔ Enviado por el guarda el ${new Date(s.sent.at).toLocaleString("es-CO",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})}. Falta la firma del supervisor: lo diligenciado ya no se puede modificar.</div><div class="row" style="margin-top:12px"><button class="btn pr" id="sendSup">Enviar con firma del supervisor</button><button class="btn" id="closeSup">Cerrar sin firma del supervisor</button></div>`:`<div class="row" style="margin-top:12px"><button class="btn pr" id="send">Enviar reporte (firma del guarda)</button><span class="mu" id="cnt"></span></div>`}</div>`;
+ <div><label>Supervisor de turno – NOMBRES Y APELLIDOS</label><input id="sn" list="dl-n" autocomplete="off" value="${esc(s.sup)}"><label style="margin-top:8px">Firma</label><div class="sigbox" id="sb">${sigHtml(s.ss)}</div><button class="btn" id="sbt" data-sig="sc">${s.ss?"Cambiar firma":"Firmar"}</button><label style="margin-top:8px">Observaciones del supervisor (opcional)</label><textarea id="os" rows="3" placeholder="Observaciones del supervisor sobre este reporte">${esc(s.obsSup)}</textarea></div></div>
+ ${s.sent?(s.obsSF?`<div style="margin-top:10px"><label>Observación del guarda: motivo del envío sin la firma del supervisor</label><textarea rows="2" disabled>${esc(s.obsSF)}</textarea></div>`:""):`<div id="osfw" class="${s.ss?"hide":""}" style="margin-top:10px"><label>Observación del guarda: ¿por qué se envía sin la firma del supervisor? (obligatoria)</label><textarea id="osf" rows="2" placeholder="Ej.: el supervisor no se encontraba en el puesto / atendía una emergencia">${esc(s.obsSF)}</textarea></div>`}
+ <div id="fm"></div><datalist id="dl-n">${dutyNames().map(n=>`<option value="${esc(n)}">`).join("")}</datalist>${s.sent?`<div class="msg good" style="margin-top:12px">✔ Enviado por el guarda el ${new Date(s.sent.at).toLocaleString("es-CO",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})}. Falta la firma del supervisor: lo diligenciado ya no se puede modificar. El supervisor todavía puede escribir sus observaciones.</div><div class="row" style="margin-top:12px"><button class="btn pr" id="sendSup">Enviar con firma del supervisor</button><button class="btn" id="closeSup">Cerrar sin firma del supervisor</button></div>`:`<div class="row" style="margin-top:12px"><button class="btn pr" id="send">Enviar reporte (firma del guarda)</button><span class="mu" id="cnt"></span></div>`}</div>`;
  $("#form").innerHTML=h;
  cnt();
 }
 function cnt(){const e=$("#cnt");if(e){const n=nph(st[cur]);e.textContent=[...st[cur].marks].filter(m=>SHOW.includes(+m.split("|").pop())).length+" novedad(es) marcada(s)"+(n?" · "+n+" foto(s)":"")}}
 const supTxt=d=>d.ss?"Firmado":(d.supStatus=="sin_firma"?"Sin firma del supervisor":"Pendiente de firma del supervisor");
 const sigHtml=img=>img?`<img class="sig" src="${img}">`:'<span class="mu">Sin firma</span>';
-function sigRefresh(id){const g=id=="gc",img=st[cur][g?"gs":"ss"];$(g?"#gb":"#sb").innerHTML=sigHtml(img);$(g?"#gbt":"#sbt").textContent=img?"Cambiar firma":"Firmar"}
+function sigRefresh(id){const g=id=="gc",img=st[cur][g?"gs":"ss"];$(g?"#gb":"#sb").innerHTML=sigHtml(img);$(g?"#gbt":"#sbt").textContent=img?"Cambiar firma":"Firmar";const w=$("#osfw");if(w&&!st[cur].sent)w.classList.toggle("hide",!!st[cur].ss)}
 function sigOpen(id){
  const old=$("#sg");if(old)old.remove();
  const g=id=="gc",key=g?"gs":"ss",img=st[cur][key];
@@ -278,21 +279,22 @@ document.addEventListener("click",e=>{
  if(t.id=="li")FB.login($("#le").value,$("#lp").value).catch(e=>{const c=String(e&&e.code||"");$("#lm").innerHTML='<div class="msg err">'+(c==="auth/operation-not-allowed"?"El acceso con correo y contraseña no está activado en Firebase.":c==="auth/unauthorized-domain"?"Este dominio no está autorizado en Firebase (Authentication → Configuración → Dominios autorizados).":"Correo o contraseña incorrectos. Verifique que el usuario exista en este proyecto de Firebase.")+" <small>("+esc(c||"error")+")</small></div>"});
 });
 document.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.matches&&e.target.matches("td.c,td.p")){e.preventDefault();e.target.click()}});
-document.addEventListener("input",e=>{const s=st[cur];if(e.target.id=="gn")s.guard=e.target.value;if(e.target.id=="sn")s.sup=e.target.value;if(e.target.id=="ob")s.obs=e.target.value;if(e.target.id=="fd")s.date=e.target.value});
+document.addEventListener("input",e=>{const s=st[cur];if(e.target.id=="gn")s.guard=e.target.value;if(e.target.id=="sn")s.sup=e.target.value;if(e.target.id=="ob")s.obs=e.target.value;if(e.target.id=="os")s.obsSup=e.target.value;if(e.target.id=="osf")s.obsSF=e.target.value;if(e.target.id=="fd")s.date=e.target.value});
 function msg(t,c){$("#fm").innerHTML=`<div class="msg ${c}">${t}</div>`}
 async function send(){
  const s=st[cur],def=R[cur];
  if(!s.date||!s.guard.trim())return msg("Complete la fecha y el nombre del guarda.","err");
  if(!s.gs)return msg("Falta la firma del guarda.","err");
  if(s.ss&&!s.sup.trim())return msg("Escriba el nombre del supervisor para enviar con su firma.","err");
+ if(!s.ss&&(s.obsSF||"").trim().length<5)return msg("Escriba la observación del guarda: indique por qué se envía sin la firma del supervisor.","err");
  const rid=cur+"-"+s.date.replace(/-/g,"")+"-"+Date.now(),ph=[],nov=[];
  def.secs.forEach(sec=>sec.r.forEach((nm,i)=>{const cs=[],ims=s.photos[sec.k+"|"+i]||[];for(const c of SHOW)if(s.marks.has(sec.k+"|"+i+"|"+c))cs.push(COLS[c]);
   if(cs.length||ims.length){const e={s:sec.t,r:String(i+1).padStart(2,"0")+" "+nm,c:cs};if(ims.length)e.fs=ims.map(d=>{const pid=rid+"_"+ph.length;ph.push({id:pid,d});return pid});nov.push(e)}}));
  const rooms=def.secs.reduce((a,x)=>a+x.r.length,0);
- const doc={type:cur,title:def.n,date:s.date,signedAt:Date.now(),guard:s.guard.trim(),sup:s.sup.trim(),gs:s.gs,ss:s.ss||null,ssAt:s.ss?Date.now():null,supStatus:s.ss?"firmado":"pendiente",obs:s.obs.trim(),nov,rooms,total:nov.reduce((a,x)=>a+x.c.length,0),createdAt:Date.now(),by:UID};
+ const doc={type:cur,title:def.n,date:s.date,signedAt:Date.now(),guard:s.guard.trim(),sup:s.sup.trim(),gs:s.gs,ss:s.ss||null,ssAt:s.ss?Date.now():null,supStatus:s.ss?"firmado":"pendiente",obs:s.obs.trim(),obsSup:(s.obsSup||"").trim(),obsSF:s.ss?"":(s.obsSF||"").trim(),nov,rooms,total:nov.reduce((a,x)=>a+x.c.length,0),createdAt:Date.now(),by:UID};
  const _sd=new Date(),_sdd=_sd.getFullYear()+"-"+String(_sd.getMonth()+1).padStart(2,"0")+"-"+String(_sd.getDate()).padStart(2,"0");
  if(s.date!==_sdd&&!await uiC("⚠ La fecha del reporte ("+s.date.split("-").reverse().join("/")+") NO coincide con el día de la firma ("+_sdd.split("-").reverse().join("/")+").\n\n¿Enviar así?"))return;
- if(!await uiC(s.ss?"¿Finalizar y enviar el reporte? No podrá modificarse después.":"¿Enviar el reporte con la firma del guarda? Quedará registrado a esta hora. El supervisor solo podrá agregar su firma; lo diligenciado no se podrá modificar."))return;
+ if(!await uiC(s.ss?"¿Finalizar y enviar el reporte? No podrá modificarse después.":"¿Enviar el reporte con la firma del guarda? Quedará registrado a esta hora. El supervisor solo podrá agregar su firma y sus observaciones; lo diligenciado no se podrá modificar."))return;
  $("#send").disabled=true;
  const id=rid;
  try{
@@ -309,11 +311,11 @@ async function sendSup(){
  const s=st[cur];if(!s.sent)return;
  if(!s.sup.trim())return msg("Escriba el nombre del supervisor.","err");
  if(!s.ss)return msg("Falta la firma del supervisor.","err");
- if(!await uiC("¿Enviar con la firma del supervisor? Solo se agregarán su nombre y su firma; lo diligenciado no cambia."))return;
+ if(!await uiC("¿Enviar con la firma del supervisor? Solo se agregarán su nombre, su firma y sus observaciones; lo diligenciado no cambia."))return;
  $("#sendSup").disabled=true;
  try{
   if(!window.FB||!FB.sign)throw new Error("Firebase no cargó");
-  await FB.sign(s.sent.id,{sup:s.sup.trim(),ss:s.ss,ssAt:Date.now(),supStatus:"firmado"});
+  await FB.sign(s.sent.id,{sup:s.sup.trim(),ss:s.ss,ssAt:Date.now(),supStatus:"firmado",obsSup:(s.obsSup||"").trim()});
   msg("✔ Firma del supervisor registrada. Reporte completo.","good");
   st[cur]=fresh();saveDraft();setTimeout(renderForm,2500);
  }catch(err){msg("No se pudo registrar la firma ("+esc(err.message||err)+"). Intente de nuevo.","err");$("#sendSup").disabled=false}
@@ -323,7 +325,7 @@ async function closeSup(){
  if(!await uiC("¿Cerrar este reporte SIN la firma del supervisor? Quedará marcado como «Sin firma del supervisor» y se limpiará el formulario de este dispositivo."))return;
  try{
   if(!window.FB||!FB.sign)throw new Error("Firebase no cargó");
-  await FB.sign(s.sent.id,{supStatus:"sin_firma"});
+  await FB.sign(s.sent.id,{supStatus:"sin_firma",obsSup:(s.obsSup||"").trim()});
   st[cur]=fresh();saveDraft();renderForm();msg("Reporte cerrado sin firma del supervisor. Quedó indicado en el Dashboard.","good");
  }catch(err){msg("No se pudo cerrar el reporte ("+esc(err.message||err)+"). Intente de nuevo.","err")}
 }
@@ -615,7 +617,7 @@ const PER={on:false,list:[],t:0,tipo:""},PERT=[["ESTUDIANTE","Estudiantes"],["DO
 function perBuild(){
  const dd=$("#dd");if(!dd)return;
  if(!dd.dataset.b){dd.dataset.b="1";
-  dd.innerHTML='<div class="card"><div class="ct">Registrar permiso</div><div class="g"><div><label for="pnm">Nombres y apellidos completos</label><input id="pnm" autocomplete="off"></div><div><label for="pdc">Número de cédula</label><input id="pdc" inputmode="numeric" autocomplete="off"></div><div><label for="ptp">Tipo</label><select id="ptp"><option value="">Seleccione…</option><option value="ESTUDIANTE">Estudiante</option><option value="DOCENTE">Docente</option><option value="TRABAJADOR">Trabajador</option></select></div><div><label for="pmv">Movimiento</label><select id="pmv"><option value="SALIDA">Salida</option><option value="INGRESO">Ingreso</option></select></div><div><label for="pfd">Desde (fecha)</label><input id="pfd" type="date"></div><div><label for="pfh">Hasta (fecha)</label><input id="pfh" type="date"></div><div><label for="phr">Hora de salida / ingreso</label><input id="phr" type="time"></div><div><label for="pft">Foto del documento de permiso</label><input id="pft" type="file" accept="image/*"></div></div><div style="margin-top:10px"><label for="pmo">Motivo del permiso</label><textarea id="pmo" rows="3" maxlength="500" placeholder="Ej.: cita médica, trámite, calamidad doméstica…"></textarea></div><img id="pfp" class="hide" alt="Vista previa" style="max-width:180px;max-height:180px;margin-top:8px;border-radius:8px;border:1px solid var(--bd)"><div class="row" style="margin-top:10px"><button class="btn pr" id="pgd">Guardar permiso</button></div><div id="pms" style="margin-top:6px"></div></div><div class="card"><div class="ct">Buscar permisos</div><div id="pbt" style="display:flex;gap:8px;flex-wrap:wrap"></div><input id="pq" type="search" placeholder="Buscar por nombre o cédula" autocomplete="off" style="margin-top:10px"><div class="mu" id="pst" style="margin-top:6px">Cargando…</div></div><div id="pl"></div>';
+  dd.innerHTML=(AUTH?'<div class="card"><div class="ct">Registrar permiso</div><div class="g"><div><label for="pnm">Nombres y apellidos completos</label><input id="pnm" autocomplete="off"></div><div><label for="pdc">Número de cédula</label><input id="pdc" inputmode="numeric" autocomplete="off"></div><div><label for="ptp">Tipo</label><select id="ptp"><option value="">Seleccione…</option><option value="ESTUDIANTE">Estudiante</option><option value="DOCENTE">Docente</option><option value="TRABAJADOR">Trabajador</option></select></div><div><label for="pmv">Movimiento</label><select id="pmv"><option value="SALIDA">Salida</option><option value="INGRESO">Ingreso</option></select></div><div><label for="pfd">Desde (fecha)</label><input id="pfd" type="date"></div><div><label for="pfh">Hasta (fecha)</label><input id="pfh" type="date"></div><div><label for="phr">Hora de salida / ingreso</label><input id="phr" type="time"></div><div><label for="pft">Foto del documento de permiso</label><input id="pft" type="file" accept="image/*"></div></div><div style="margin-top:10px"><label for="pmo">Motivo del permiso</label><textarea id="pmo" rows="3" maxlength="500" placeholder="Ej.: cita médica, trámite, calamidad doméstica…"></textarea></div><img id="pfp" class="hide" alt="Vista previa" style="max-width:180px;max-height:180px;margin-top:8px;border-radius:8px;border:1px solid var(--bd)"><div class="row" style="margin-top:10px"><button class="btn pr" id="pgd">Guardar permiso</button></div><div id="pms" style="margin-top:6px"></div></div>':'<div class="card"><div class="mu">🔒 Solo los supervisores con acceso a la plataforma completa pueden registrar o quitar permisos. Aquí puede consultarlos.</div></div>')+'<div class="card"><div class="ct">Buscar permisos</div><div id="pbt" style="display:flex;gap:8px;flex-wrap:wrap"></div><input id="pq" type="search" placeholder="Buscar por nombre o cédula" autocomplete="off" style="margin-top:10px"><div class="mu" id="pst" style="margin-top:6px">Cargando…</div></div><div id="pl"></div>';
  }
  perStart();perRender();
 }
@@ -630,6 +632,7 @@ const perFecha=f=>f?String(f).split("-").reverse().join("/"):"";
 function perFoto(file){return new Promise((res,rej)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{const k=Math.min(1,1280/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext("2d").drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);let q=.75,d=c.toDataURL("image/jpeg",q);while(d.length>300000&&q>.3){q-=.1;d=c.toDataURL("image/jpeg",q)}res(d)};im.onerror=()=>{URL.revokeObjectURL(u);rej(new Error("imagen no válida"))};im.src=u})}
 function perEstado(p){const t=new Date(),h=t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0");if(!p.desde)return["","Sin fechas"];if(p.hasta&&h>p.hasta)return["","Vencido"];if(h<p.desde)return["wn","Próximo"];return["ok","Vigente"]}
 async function perSave(){
+ if(!AUTH){alert("Solo los supervisores con acceso a la plataforma completa pueden registrar permisos.");return}
  const nm=($("#pnm").value||"").trim().replace(/\s+/g," "),dc=busNum($("#pdc").value),tp=$("#ptp").value,mv=$("#pmv").value,fd=$("#pfd").value,fh=$("#pfh").value,hr=$("#phr").value,mo=($("#pmo").value||"").trim(),fl=($("#pft").files||[])[0];
  if(nm.split(" ").length<2)return perMsg("Escriba los nombres y apellidos completos.","err");
  if(dc.length<5)return perMsg("Escriba el número de cédula (solo números).","err");
@@ -710,14 +713,14 @@ function renderDash(){
   <div class="rb"><span class="pill ${d.total?"":"ok"}">${d.total?d.total+" novedad(es)":"Sin novedad"}</span>${bad?'<span class="pill wn" title="La fecha del reporte no coincide con el día de la firma">Revisar fecha</span>':""}${d.ss?"":(d.supStatus=="sin_firma"?'<span class="pill wn">Sin firma del supervisor</span>':'<span class="pill wn">Pendiente firma del supervisor</span>')}</div>
   <div class="mg"><div><small>Guarda</small>${esc(tc(d.guard))}</div><div><small>Supervisor</small>${esc(tc(d.sup))}</div><div><small>Fecha del reporte</small>${esc(fD(d.date))}</div><div><small>Enviado por el guarda</small>${sg?new Date(sg).toLocaleString("es-CO",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"—"}</div><div><small>Firma del supervisor</small>${d.ss?(d.ssAt?new Date(d.ssAt).toLocaleString("es-CO",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"Firmado"):(d.supStatus=="sin_firma"?"Sin firma":"Pendiente")}</div></div>
   <details><summary>Ver detalle y firmas</summary>${d.nov.map(n=>`<div class="nv"><b>${esc(n.r)}</b> <span class="mu">${esc(fz(n.s))}</span><br>${n.c.map(c=>`<span class="pill">${esc(c)}</span>`).join(" ")}${(n.fs||(n.f?[n.f]:[])).map((f,j)=>` <button class="btn" data-ph="${esc(f)}">📷 Foto ${j+1}</button>`).join("")}</div>`).join("")||'<p class="mu">Sin novedades.</p>'}
-  ${d.obs?`<p><b>Observaciones:</b> ${esc(d.obs)}</p>`:""}
+  ${d.obs?`<p><b>Observaciones:</b> ${esc(d.obs)}</p>`:""}${d.obsSup?`<p><b>Observaciones del supervisor:</b> ${esc(d.obsSup)}</p>`:""}${d.obsSF?`<p><b>Observación del guarda (enviado sin firma del supervisor):</b> ${esc(d.obsSF)}</p>`:""}
   <div class="row"><div><div class="mu">Guarda</div><img class="sig" src="${d.gs}"></div><div><div class="mu">Supervisor</div>${d.ss?`<img class="sig" src="${d.ss}">`:'<span class="mu">Sin firma</span>'}</div></div></details></div>`});
  ED.flash="";$("#dp").innerHTML=h;$("#fl").value=f;$("#ft").value=ft;
  $("#fc").onclick=()=>{$("#fl").value="";$("#ft").value="";FB.setRange(FB.defFrom(),"",FB.pg);renderDash()};
  $("#fl").onchange=$("#ft").onchange=renderDash;
  $("#fr1").onchange=$("#fr2").onchange=()=>FB.setRange($("#fr1").value,$("#fr2").value,FB.pg);if($("#fmore"))$("#fmore").onclick=()=>FB.setRange(RG.from,RG.to,RG.n+FB.pg);
- $("#csv").onclick=async()=>{const rows=[["Reporte","Fecha","Firma guarda","Guarda","Supervisor","Sección","Aula","Novedades","Fotos","Observaciones","Firma supervisor"]];
-  L.forEach(d=>{if(!d.nov.length)rows.push([fz(d.title),d.date,new Date(d.signedAt||d.createdAt).toISOString(),d.guard,d.sup,"","","Sin novedad","",d.obs,supTxt(d)]);d.nov.forEach(n=>rows.push([fz(d.title),d.date,new Date(d.signedAt||d.createdAt).toISOString(),d.guard,d.sup,fz(n.s),n.r,n.c.join("; "),(n.fs||(n.f?[n.f]:[])).length||"",d.obs,supTxt(d)]))});
+ $("#csv").onclick=async()=>{const rows=[["Reporte","Fecha","Firma guarda","Guarda","Supervisor","Sección","Aula","Novedades","Fotos","Observaciones","Firma supervisor","Observaciones supervisor","Motivo envío sin firma del supervisor"]];
+  L.forEach(d=>{if(!d.nov.length)rows.push([fz(d.title),d.date,new Date(d.signedAt||d.createdAt).toISOString(),d.guard,d.sup,"","","Sin novedad","",d.obs,supTxt(d),d.obsSup||"",d.obsSF||""]);d.nov.forEach(n=>rows.push([fz(d.title),d.date,new Date(d.signedAt||d.createdAt).toISOString(),d.guard,d.sup,fz(n.s),n.r,n.c.join("; "),(n.fs||(n.f?[n.f]:[])).length||"",d.obs,supTxt(d),d.obsSup||"",d.obsSF||""]))});
   const data="\ufeff"+rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(",")).join("\n");
   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([data],{type:"text/csv;charset=utf-8"}));a.download="reportes-novedades.csv";a.click()};
  if($("#lo"))$("#lo").onclick=()=>FB.logout();
@@ -994,6 +997,9 @@ async function makePdf(kind){
   const ob=L.filter(d=>d.obs).map(d=>[fmtD(d.date),d.type=="r1"?"Reporte 1":"Reporte 2",d.obs]);
   if(ob.length){y=need(doc.lastAutoTable.finalY+8,30);pill("Observaciones generales",M,y,CW);
    doc.autoTable(Object.assign({},tblBase,{startY:y+9,head:[["Fecha","Reporte","Observación"]],body:ob,columnStyles:{0:{cellWidth:20,halign:"center"},1:{cellWidth:18,halign:"center"}}}))}
+  {const os=L.filter(d=>d.obsSup||d.obsSF).map(d=>[fmtD(d.date),d.type=="r1"?"Reporte 1":"Reporte 2",(d.obsSup?"Supervisor: "+d.obsSup:"")+(d.obsSup&&d.obsSF?"\n":"")+(d.obsSF?"Guarda (enviado sin firma del supervisor): "+d.obsSF:"")]);
+   if(os.length){y=need((doc.lastAutoTable?doc.lastAutoTable.finalY:y)+8,30);pill("Observaciones del supervisor y del guarda",M,y,CW);
+    doc.autoTable(Object.assign({},tblBase,{startY:y+9,head:[["Fecha","Reporte","Observación"]],body:os,columnStyles:{0:{cellWidth:20,halign:"center"},1:{cellWidth:18,halign:"center"}}}))}}
   /* --- recomendaciones --- */
   {const rc=(REC[kind]||[]).slice().sort((x,y)=>x.at-y.at);
    if(rc.length){y=need((doc.lastAutoTable?doc.lastAutoTable.finalY:y)+8,40);pill("Recomendaciones",M,y,CW);
@@ -1013,9 +1019,9 @@ async function makePdf(kind){
 /* ===== Autoguardado: todo lo escrito queda en el dispositivo y se restaura al volver ===== */
 let READY=false,VIEW="r1",SCR=0;
 let SD;function saveDraft(){if(!READY)return;clearTimeout(SD);SD=setTimeout(saveNow,250)}
-function saveNow(){if(!READY)return;clearTimeout(SD);const o={view:VIEW,y:Math.round(window.scrollY||0)};["r1","r2"].forEach(id=>{const x=st[id];o[id]={marks:[...x.marks],date:x.date,guard:x.guard,sup:x.sup,obs:x.obs,gs:x.gs,ss:x.ss,gt:x.gt,sent:x.sent||null,photos:x.photos}});kv.set("draft",o).catch(()=>{const e=$("#cnt");if(e)e.textContent="⚠ No se pudo guardar el borrador en este dispositivo."})}
+function saveNow(){if(!READY)return;clearTimeout(SD);const o={view:VIEW,y:Math.round(window.scrollY||0)};["r1","r2"].forEach(id=>{const x=st[id];o[id]={marks:[...x.marks],date:x.date,guard:x.guard,sup:x.sup,obs:x.obs,obsSup:x.obsSup,obsSF:x.obsSF,gs:x.gs,ss:x.ss,gt:x.gt,sent:x.sent||null,photos:x.photos}});kv.set("draft",o).catch(()=>{const e=$("#cnt");if(e)e.textContent="⚠ No se pudo guardar el borrador en este dispositivo."})}
 async function restoreDraft(){try{let o=await kv.get("draft");if(!o){o=safe(()=>JSON.parse(localStorage.getItem("draft")||"null"),null);if(o){await kv.set("draft",o);safe(()=>localStorage.removeItem("draft"))}}if(!o)return;
- ["r1","r2"].forEach(id=>{const d=o[id];if(!d)return;st[id]={marks:new Set(d.marks||[]),date:(d.sent||(d.date&&d.date>=today()))?d.date:today(),guard:d.guard||"",sup:d.sup||"",obs:d.obs||"",gs:d.gs||null,ss:d.ss||null,gt:d.gt||null,sent:d.sent||null,photos:normPh(d.photos)}});
+ ["r1","r2"].forEach(id=>{const d=o[id];if(!d)return;st[id]={marks:new Set(d.marks||[]),date:(d.sent||(d.date&&d.date>=today()))?d.date:today(),guard:d.guard||"",sup:d.sup||"",obs:d.obs||"",obsSup:d.obsSup||"",obsSF:d.obsSF||"",gs:d.gs||null,ss:d.ss||null,gt:d.gt||null,sent:d.sent||null,photos:normPh(d.photos)}});
  if(o.view=="r1"||o.view=="r2"||o.view=="dash")VIEW=o.view;if(VIEW!="dash")cur=VIEW;SCR=o.y||0}catch(e){}}
 safe(()=>applyLayout(JSON.parse(localStorage.getItem("lay"))));
 let _t;
@@ -1064,7 +1070,7 @@ window.FBA={
  ingreso:(cid,o)=>{const b=writeBatch(dbA);b.set(doc(collection(dbA,"movimientos")),Object.assign({tipo:"INGRESO"},o,{ts:serverTimestamp()}));b.update(doc(dbA,"citas",cid),{ingresoAt:serverTimestamp(),ingresoPor:(auth.currentUser&&auth.currentUser.email)||"vigilancia"});return b.commit()},
  watchCitas:(ok,err)=>{if(cun)return;cun=onSnapshot(query(collection(dbA,"citas"),orderBy("ts","desc"),limit(2000)),s=>ok(s.docs.map(d=>Object.assign({id:d.id},d.data({serverTimestamps:"estimate"})))),e=>{cun=null;err(e)})},
  watchPermisos:(ok,err)=>{if(pun)return;pun=onSnapshot(collection(dbA,"permisos"),s=>ok(s.docs.map(d=>Object.assign({id:d.id},d.data()))),e=>{pun=null;err(e)})},
- addPermiso:(id,o)=>setDoc(doc(dbA,"permisos",id),Object.assign({},o,{ts:serverTimestamp(),por:(auth.currentUser&&auth.currentUser.email)||"vigilancia"}),{merge:true}),
+ addPermiso:(id,o)=>{const u=auth.currentUser;if(!u||u.isAnonymous)return Promise.reject(new Error("Solo los supervisores con cuenta pueden crear permisos"));return setDoc(doc(dbA,"permisos",id),Object.assign({},o,{ts:serverTimestamp(),por:(auth.currentUser&&auth.currentUser.email)||"vigilancia"}),{merge:true})},
  delPermiso:id=>deleteDoc(doc(dbA,"permisos",id))
 };
 const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"),defFrom=()=>{const d=new Date();return iso(new Date(d.getFullYear(),d.getMonth()-1,1))},PG=150;
