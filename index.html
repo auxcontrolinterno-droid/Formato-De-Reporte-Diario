@@ -172,6 +172,7 @@ th{background:var(--lb);color:var(--pr)}
 .ac-t tbody tr:nth-child(even) td{background:var(--bg)}
 /* Indicadores y estados con la paleta de las gráficas del PDF */
 .k .k3{border-left-color:var(--c4)}.k .k4{border-left-color:var(--c3)}
+#da .k>#acIw{grid-column:span 1;padding:8px 10px}#da .k>#acIw b{font-size:28px}
 .rc.sn{border-left-color:var(--c3)}
 .ok,.good{background:rgba(60,160,110,.16);color:#1d6b44}
 html[data-theme=dark] .ok,html[data-theme=dark] .good{color:#8fd6ae}
@@ -377,7 +378,8 @@ function accVis(){return (AUTH||GUARD)&&(DT=="acc"||DT=="bus")&&$("#da")&&!$("#d
 function accBuild(){
  const da=$("#da");if(!da||da.dataset.b)return;da.dataset.b="1";
  da.innerHTML=`<div class="k">
-  <div class="k1" id="acRw"><small>Proveedores y contratistas</small><button class="btn pr" id="acRb" type="button" style="width:100%;font-size:16px;font-weight:700;margin-top:4px">🔁 Recurrentes</button></div>
+  <div class="k1" id="acIw"><small>Ingresos hoy</small><b id="acIn">0</b></div>
+  <div class="k4" id="acRw"><small>Proveedores y contratistas</small><button class="btn pr" id="acRb" type="button" style="width:100%;font-size:15px;font-weight:700;margin-top:4px">🔁 Recurrentes</button></div>
   <div class="k2"><small>Salidas hoy</small><b id="acOut">0</b></div>
   <div class="k3"><small>Contratistas dentro</small><b id="acCo">0</b></div>
   <div class="k4"><small>Proveedores dentro</small><b id="acPr">0</b></div>
