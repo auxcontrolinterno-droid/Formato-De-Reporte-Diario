@@ -377,7 +377,7 @@ function accVis(){return (AUTH||GUARD)&&(DT=="acc"||DT=="bus")&&$("#da")&&!$("#d
 function accBuild(){
  const da=$("#da");if(!da||da.dataset.b)return;da.dataset.b="1";
  da.innerHTML=`<div class="k">
-  <div class="k1"><small>Ingresos hoy</small><b id="acIn">0</b></div>
+  <div class="k1" id="acRw"><small>Proveedores y contratistas</small><button class="btn pr" id="acRb" type="button" style="width:100%;font-size:16px;font-weight:700;margin-top:4px">🔁 Recurrentes</button></div>
   <div class="k2"><small>Salidas hoy</small><b id="acOut">0</b></div>
   <div class="k3"><small>Contratistas dentro</small><b id="acCo">0</b></div>
   <div class="k4"><small>Proveedores dentro</small><b id="acPr">0</b></div>
@@ -385,17 +385,19 @@ function accBuild(){
   <div><small>Estado</small><b id="acEs" style="font-size:16px">🟡 Cargando</b></div>
   <div><small>Hora actual</small><b id="acHr" style="font-size:16px">--:--</b><em id="acSy">Sync: --</em></div></div>
   <div id="acMsg"></div>
+  <div id="acRec" class="hide"></div>
+  <div id="acMain">
   <div class="card"><div class="ct">Últimos movimientos de hoy</div><div class="wrap"><table class="ac-t"><thead><tr><th>Hora</th><th>Nombre</th><th>Rol</th><th>Movimiento</th></tr></thead><tbody id="acTb"></tbody></table></div></div>
   <div class="ac2">
    <div class="card"><div class="ac-h"><div class="ct">Contratistas dentro</div><span class="pill ok" id="acCn">0</span></div><div id="acLc"></div></div>
    <div class="card"><div class="ac-h"><div class="ct">Proveedores dentro</div><span class="pill ok" id="acPn">0</span></div><div id="acLp"></div></div>
    <div class="card"><div class="ac-h"><div class="ct">Visitantes dentro</div><span class="pill ok" id="acVn">0</span></div><div id="acLv"></div></div>
   </div>
-  <div class="mu" style="margin-top:10px">Datos en vivo del Firebase de Control de Acceso · se actualiza en tiempo real.</div>`;
+  <div class="mu" style="margin-top:10px">Datos en vivo del Firebase de Control de Acceso · se actualiza en tiempo real.</div></div>`;
 }
-const ACOLS=["Fecha","Tipo de documento","Documento","Nombre","Rol","Entidad","Teléfono","Placa","Contacto de emergencia","Tel. emergencia","Parentesco"];
+const ACOLS=["Fecha","Tipo de documento","Documento","Nombre","Rol","Entidad","Teléfono","Placa","Contacto de emergencia","Tel. emergencia","Parentesco","Destino"];
 /* Fila = [fecha, tipoDoc, doc, nombre, rol, entidad, contacto, placa, emergNombre, emergTel, parentesco] */
-function accRow(m){const t=m.ts&&m.ts.toDate?m.ts.toDate():null;return [t,m.tipoDoc||"",m.doc||"",m.nombre||"",m.rol||"",m.entidad||"",m.contacto||"",m.placa||"",m.emergenciaNombre||"",m.emergencia||"",m.parentesco||""]}
+function accRow(m){const t=m.ts&&m.ts.toDate?m.ts.toDate():null;return [t,m.tipoDoc||"",m.doc||"",m.nombre||"",m.rol||"",m.entidad||"",m.contacto||"",m.placa||"",m.emergenciaNombre||"",m.emergencia||"",m.parentesco||"",m.destino||""]}
 function accHoyStr(){const d=new Date(),p=n=>String(n).padStart(2,"0");return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())}
 function accStart(){
  if(AC.on)return;
@@ -425,7 +427,7 @@ async function accLoad(force){
  if(AC.busy)return;
  AC.busy=true;
  try{
-  if(!$("#acIn"))return;
+  if(!$("#acEs"))return;
   const [a,s]=AC.raw;
   accSet("acEs","🟢 En línea");accSet("acSy","Sync: "+AC.sync);
   const h=AC.rev+"|"+accHoyStr();
@@ -449,6 +451,7 @@ function accMov(ing,sal){
 }
 function accRender(){
  accMov(AC.ing,AC.sal);
+ rcrRender();
  accDentro(AC.ing,AC.sal,"CONTRATISTA","acLc","acCo","acCn","Sin contratistas activos");
  accDentro(AC.ing,AC.sal,"PROVEEDOR","acLp","acPr","acPn","Sin proveedores activos");
  accDentro(AC.ing,AC.sal,"VISITANTE","acLv","acVi","acVn","Sin visitantes dentro",r=>{const u=String(r||"").trim().toUpperCase();return u!=="CONTRATISTA"&&u!=="PROVEEDOR"});
@@ -490,6 +493,77 @@ async function accSalida(doc,rol){
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-ao]");if(b)accSalida(b.dataset.ao,b.dataset.ar)});
 setInterval(()=>{if(accVis())accLoad(false)},4000);
 setInterval(()=>{if(accVis())accSet("acHr",new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}))},1000);
+
+/* ===== Recurrentes: proveedores y contratistas de empresas que ingresan al menos 1 vez por semana ===== */
+const RCR={open:false,pend:new Set(),sem:4}; /* sem = semanas seguidas (de 7 días) en que la empresa tuvo al menos un ingreso */
+const rcrRol=r=>{const u=String(r||"").trim().toUpperCase();return u==="PROVEEDOR"||u==="CONTRATISTA"};
+function rcrCalc(){
+ const now=Date.now(),W=7*864e5,ini=now-RCR.sem*W,emp=new Map();
+ const T=f=>+accDate(f[0])||0;
+ AC.all.forEach(f=>{
+  if(!rcrRol(f[4]))return;
+  const e=String(f[5]||"").trim(),k=busNorm(e),t=T(f),d=String(f[2]==null?"":f[2]).trim();
+  if(!k||!t||!d)return;
+  let c=emp.get(k);if(!c){c={n:e,sem:new Set(),pe:new Map()};emp.set(k,c)}
+  const w=Math.floor((now-t)/W);
+  if(w>=0&&w<RCR.sem)c.sem.add(w);
+  if(t>=ini){const p=c.pe.get(d);if(!p)c.pe.set(d,{d:d,rows:[f]});else p.rows.push(f)}
+ });
+ const inT=new Map(),outT=new Map();
+ AC.ing.forEach(f=>{const d=String(f[2]).trim(),t=T(f);if(t>(inT.get(d)||0))inT.set(d,t)});
+ AC.sal.forEach(f=>{const d=String(f[2]).trim(),t=T(f);if(t>(outT.get(d)||0))outT.set(d,t)});
+ const res=[];
+ emp.forEach(c=>{
+  if(c.sem.size<RCR.sem)return;
+  const ps=[...c.pe.values()].map(p=>{
+   p.rows.sort((a,b)=>T(b)-T(a));
+   const f=p.rows[0],u=p.rows.find(x=>String(x[11]||"").trim());
+   const dentro=(inT.get(p.d)||0)>(outT.get(p.d)||0)&&!AC.pend.has(p.d);
+   return {d:p.d,f:f,dst:u?String(u[11]).trim():"",dentro:dentro};
+  }).sort((a,b)=>String(a.f[3]||"").localeCompare(String(b.f[3]||""),"es"));
+  if(ps.length)res.push({n:c.n,ps:ps});
+ });
+ res.sort((a,b)=>a.n.localeCompare(b.n,"es"));
+ return res;
+}
+function rcrRender(){
+ const box=$("#acRec");if(!box||!RCR.open)return;
+ if(!AC.all.length){box.innerHTML='<div class="card"><div class="mu">Cargando registros…</div></div>';return}
+ const L=rcrCalc();
+ let h='<div class="card"><div class="ac-h"><div class="ct">Recurrentes</div><button class="btn" id="acRx" type="button">← Volver</button></div><div class="mu">Empresas de proveedores y contratistas que ingresaron al menos una vez por semana durante las últimas '+RCR.sem+' semanas.</div></div>';
+ h+=L.length?L.map(c=>'<div class="card"><div class="ac-h"><div class="ct">'+esc(c.n)+'</div><span class="pill ok">'+c.ps.length+'</span></div>'
+  +c.ps.map(p=>'<div class="ac-i"><div><b>'+esc(p.f[3]||"-")+'</b><small>'+esc(String(p.f[4]||"").trim())+' · Última ubicación: '+esc(p.dst||"Sin ubicación")+'</small></div>'
+   +(p.dentro?'<span class="pill ok">Dentro</span>':'<button class="btn pr" data-ri="'+esc(p.d)+'" data-rk="'+esc(busNorm(c.n))+'"'+(RCR.pend.has(p.d)?' disabled':'')+'>Ingreso</button>')+'</div>').join("")+'</div>').join(""):'<div class="card"><div class="mu">Todavía no hay empresas recurrentes.</div></div>';
+ box.innerHTML=h;
+}
+function rcrToggle(v){
+ RCR.open=v;
+ const m=$("#acMain"),r=$("#acRec"),k=$("#da .k");
+ if(m)m.classList.toggle("hide",v);
+ if(r)r.classList.toggle("hide",!v);
+ if(k)k.classList.toggle("hide",v);
+ if(v)rcrRender();
+ window.scrollTo(0,0);
+}
+async function rcrIngreso(doc,k){
+ if(RCR.pend.has(doc))return;
+ const c=rcrCalc().find(x=>busNorm(x.n)===k),p=c&&c.ps.find(x=>x.d===doc);
+ if(!p||p.dentro)return;
+ if(!window.FBA||!FBA.ingresoRec){accMsg("Firebase de Control de Acceso aún no carga.","err");return}
+ const f=p.f;
+ if(!await uiC("¿Registrar el ingreso de "+(f[3]||doc)+(p.dst?" a "+p.dst:"")+"?"))return;
+ RCR.pend.add(doc);rcrRender();
+ try{
+  await FBA.ingresoRec({rol:String(f[4]||"").trim().toUpperCase(),tipoDoc:f[1]||"",doc:doc,nombre:f[3]||"",contacto:f[6]||"",entidad:f[5]||"",placa:f[7]||"",emergenciaNombre:f[8]||"",emergencia:f[9]||"",parentesco:f[10]||"",destino:p.dst,fechaDia:accHoyStr(),recurrente:true});
+  accMsg("✅ Ingreso registrado: "+(f[3]||doc),"good");
+ }catch(e){
+  console.log(e);accMsg("No se pudo registrar el ingreso: "+(e.code||e.message),"err");
+ }finally{RCR.pend.delete(doc);rcrRender()}
+}
+document.addEventListener("click",e=>{
+ const t=e.target.closest&&e.target.closest("#acRb,#acRx,[data-ri]");if(!t)return;
+ if(t.id==="acRb")rcrToggle(true);else if(t.id==="acRx")rcrToggle(false);else rcrIngreso(t.dataset.ri,t.dataset.rk);
+});
 
 /* ===== Subpestaña: Buscar ingresos (por nombre o cédula) ===== */
 const busNorm=v=>String(v==null?"":v).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
@@ -1068,6 +1142,7 @@ window.FBA={
  watch:(ok,err)=>{if(aun)return;aun=onSnapshot(query(collection(dbA,"movimientos"),orderBy("ts","desc"),limit(5000)),s=>ok(s.docs.map(d=>d.data({serverTimestamps:"estimate"}))),e=>{aun=null;err(e)})},
  salida:o=>setDoc(doc(collection(dbA,"movimientos")),Object.assign({tipo:"SALIDA"},o,{ts:serverTimestamp()})),
  ingreso:(cid,o)=>{const b=writeBatch(dbA);b.set(doc(collection(dbA,"movimientos")),Object.assign({tipo:"INGRESO"},o,{ts:serverTimestamp()}));b.update(doc(dbA,"citas",cid),{ingresoAt:serverTimestamp(),ingresoPor:(auth.currentUser&&auth.currentUser.email)||"vigilancia"});return b.commit()},
+ ingresoRec:o=>setDoc(doc(collection(dbA,"movimientos")),Object.assign({tipo:"INGRESO"},o,{ts:serverTimestamp()})),
  watchCitas:(ok,err)=>{if(cun)return;cun=onSnapshot(query(collection(dbA,"citas"),orderBy("ts","desc"),limit(2000)),s=>ok(s.docs.map(d=>Object.assign({id:d.id},d.data({serverTimestamps:"estimate"})))),e=>{cun=null;err(e)})},
  watchPermisos:(ok,err)=>{if(pun)return;pun=onSnapshot(collection(dbA,"permisos"),s=>ok(s.docs.map(d=>Object.assign({id:d.id},d.data()))),e=>{pun=null;err(e)})},
  addPermiso:(id,o)=>{const u=auth.currentUser;if(!u||u.isAnonymous)return Promise.reject(new Error("Solo los supervisores con cuenta pueden crear permisos"));return setDoc(doc(dbA,"permisos",id),Object.assign({},o,{ts:serverTimestamp(),por:(auth.currentUser&&auth.currentUser.email)||"vigilancia"}),{merge:true})},
