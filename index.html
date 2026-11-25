@@ -496,28 +496,25 @@ document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest
 setInterval(()=>{if(accVis())accLoad(false)},4000);
 setInterval(()=>{if(accVis())accSet("acHr",new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}))},1000);
 
-/* ===== Recurrentes: proveedores y contratistas de empresas que ingresan al menos 1 vez por semana ===== */
-const RCR={open:false,pend:new Set(),sem:4}; /* sem = semanas seguidas (de 7 días) en que la empresa tuvo al menos un ingreso */
+/* ===== Recurrentes: proveedores y contratistas con al menos 2 ingresos en los últimos 14 días ===== */
+const RCR={open:false,pend:new Set(),dias:14,min:2}; /* recurrente = persona con al menos "min" días de ingreso en los últimos "dias" días */
 const rcrRol=r=>{const u=String(r||"").trim().toUpperCase();return u==="PROVEEDOR"||u==="CONTRATISTA"};
 function rcrCalc(){
- const now=Date.now(),W=7*864e5,ini=now-RCR.sem*W,emp=new Map();
+ const now=Date.now(),ini=now-RCR.dias*864e5,emp=new Map();
  const T=f=>+accDate(f[0])||0;
  AC.all.forEach(f=>{
   if(!rcrRol(f[4]))return;
   const e=String(f[5]||"").trim(),k=busNorm(e),t=T(f),d=String(f[2]==null?"":f[2]).trim();
-  if(!k||!t||!d)return;
-  let c=emp.get(k);if(!c){c={n:e,sem:new Set(),pe:new Map()};emp.set(k,c)}
-  const w=Math.floor((now-t)/W);
-  if(w>=0&&w<RCR.sem)c.sem.add(w);
-  if(t>=ini){const p=c.pe.get(d);if(!p)c.pe.set(d,{d:d,rows:[f]});else p.rows.push(f)}
+  if(!k||!t||!d||t<ini)return;
+  let c=emp.get(k);if(!c){c={n:e,pe:new Map()};emp.set(k,c)}
+  const p=c.pe.get(d);if(!p)c.pe.set(d,{d:d,rows:[f]});else p.rows.push(f)
  });
  const inT=new Map(),outT=new Map();
  AC.ing.forEach(f=>{const d=String(f[2]).trim(),t=T(f);if(t>(inT.get(d)||0))inT.set(d,t)});
  AC.sal.forEach(f=>{const d=String(f[2]).trim(),t=T(f);if(t>(outT.get(d)||0))outT.set(d,t)});
  const res=[];
  emp.forEach(c=>{
-  if(c.sem.size<RCR.sem)return;
-  const ps=[...c.pe.values()].map(p=>{
+  const ps=[...c.pe.values()].filter(p=>new Set(p.rows.map(x=>new Date(T(x)).toDateString())).size>=RCR.min).map(p=>{
    p.rows.sort((a,b)=>T(b)-T(a));
    const f=p.rows[0],u=p.rows.find(x=>String(x[11]||"").trim());
    const dentro=(inT.get(p.d)||0)>(outT.get(p.d)||0)&&!AC.pend.has(p.d);
@@ -532,7 +529,7 @@ function rcrRender(){
  const box=$("#acRec");if(!box||!RCR.open)return;
  if(!AC.all.length){box.innerHTML='<div class="card"><div class="mu">Cargando registros…</div></div>';return}
  const L=rcrCalc();
- let h='<div class="card"><div class="ac-h"><div class="ct">Recurrentes</div><button class="btn" id="acRx" type="button">← Volver</button></div><div class="mu">Empresas de proveedores y contratistas que ingresaron al menos una vez por semana durante las últimas '+RCR.sem+' semanas.</div></div>';
+ let h='<div class="card"><div class="ac-h"><div class="ct">Recurrentes</div><button class="btn" id="acRx" type="button">← Volver</button></div><div class="mu">Proveedores y contratistas que ingresaron al menos '+RCR.min+' veces (en días distintos) durante los últimos '+RCR.dias+' días.</div></div>';
  h+=L.length?L.map(c=>'<div class="card"><div class="ac-h"><div class="ct">'+esc(c.n)+'</div><span class="pill ok">'+c.ps.length+'</span></div>'
   +c.ps.map(p=>'<div class="ac-i"><div><b>'+esc(p.f[3]||"-")+'</b><small>'+esc(String(p.f[4]||"").trim())+' · Última ubicación: '+esc(p.dst||"Sin ubicación")+'</small></div>'
    +(p.dentro?'<span class="pill ok">Dentro</span>':'<button class="btn pr" data-ri="'+esc(p.d)+'" data-rk="'+esc(busNorm(c.n))+'"'+(RCR.pend.has(p.d)?' disabled':'')+'>Ingreso</button>')+'</div>').join("")+'</div>').join(""):'<div class="card"><div class="mu">Todavía no hay empresas recurrentes.</div></div>';
