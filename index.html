@@ -623,17 +623,19 @@ document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest
 document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.dataset&&d.dataset.bk){d.open?AC.bo.add(d.dataset.bk):AC.bo.delete(d.dataset.bk)}},true);
 
 /* ===== Subpestaña: Citas (llegan desde citas.html, colección "citas" del Firebase de Control de Acceso) ===== */
-const CIT={on:false,list:[],t:0,area:"",est:""},CIT_AREAS=["Admisiones","Recursos humanos","SST","Vicerrectorías","Psicologías","Convivencia y disciplina","PE"];
+const CIT_DEF=["Admisiones","Recursos humanos","SST","Vicerrectorías","Psicologías","Convivencia y disciplina","PE"],CIT_FIJAS=["Vicerrectorías","Psicologías"];
+const CIT={on:false,aw:false,list:[],t:0,area:"",est:""},CIT_AREAS=CIT_DEF.slice();
 function citBuild(){
  const dc=$("#dc");if(!dc)return;
  if(!dc.dataset.b){dc.dataset.b="1";
-  dc.innerHTML='<div class="card"><div class="ac-h"><div class="ct">Citas registradas</div><span class="pill ok" id="ciN">0</span></div><div class="g"><div><label for="ciF">Fecha de la cita</label><input type="date" id="ciF" value="'+accHoyStr()+'"></div><div><label for="ciQ">Buscar por nombre o cédula</label><input id="ciQ" type="search" placeholder="Nombre o documento" autocomplete="off"></div></div><div class="row" style="margin-top:10px"><button class="btn" id="ciH">Hoy</button><button class="btn" id="ciT">Ver todas</button></div><div id="ciA" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"></div><div class="mu" id="ciS" style="margin-top:6px">Cargando citas…</div></div><div id="ciL"></div>';
+  dc.innerHTML='<div class="card"><div class="ac-h"><div class="ct">Citas registradas</div><span class="pill ok" id="ciN">0</span></div><div class="g"><div><label for="ciF">Fecha de la cita</label><input type="date" id="ciF" value="'+accHoyStr()+'"></div><div><label for="ciQ">Buscar por nombre o cédula</label><input id="ciQ" type="search" placeholder="Nombre o documento" autocomplete="off"></div></div><div class="row" style="margin-top:10px"><button class="btn" id="ciH">Hoy</button><button class="btn" id="ciT">Ver todas</button></div><div id="ciA" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"></div><div class="mu" id="ciS" style="margin-top:6px">Cargando citas…</div>'+(AUTH?'<div class="row" style="margin-top:10px"><button class="btn" id="ciAdB">⚙ Administrar áreas</button></div><div id="ciAd" class="hide" style="margin-top:10px"></div>':'')+'</div><div id="ciL"></div>';
  }
  citStart();citRender();
 }
 function citStart(){
  if(CIT.on)return;
  if(!window.FBA||!FBA.watchCitas){if(!CIT.t)CIT.t=setTimeout(()=>{CIT.t=0;citStart()},1000);return}
+ if(!CIT.aw&&FBA.watchAreasCitas){CIT.aw=true;FBA.watchAreasCitas(a=>{const l=Array.isArray(a)&&a.length?a:CIT_DEF;CIT_AREAS.length=0;CIT_AREAS.push(...l);if(CIT.area&&!CIT_AREAS.includes(CIT.area))CIT.area="";citRender();citAdm()},e=>{CIT.aw=false;console.log(e)})}
  CIT.on=true;
  FBA.watchCitas(l=>{CIT.list=l;citRender()},e=>{CIT.on=false;console.log(e);const s=$("#ciS");if(s)s.innerHTML='<span class="msg err">No se pudieron leer las citas: '+esc(e.code||e.message)+'</span>'});
 }
@@ -648,7 +650,7 @@ function citRender(){
  const ca=$("#ciA");if(ca){
   if(!ca.querySelector("select"))ca.innerHTML='<div style="width:100%"><label for="ciAs">Filtrar por área</label><select id="ciAs"></select></div>';
   const sl=$("#ciAs"),tx=['Todas las áreas ('+b.length+')'].concat(CIT_AREAS.map(x=>x+' ('+(cn[x]||0)+')'));
-  if(sl.options.length!==tx.length){sl.innerHTML=["",...CIT_AREAS].map(x=>'<option value="'+esc(x)+'"></option>').join("")}
+  if(sl.options.length!==tx.length||[...sl.options].some((o,k)=>o.value!==(k?CIT_AREAS[k-1]:""))){sl.innerHTML=["",...CIT_AREAS].map(x=>'<option value="'+esc(x)+'"></option>').join("")}
   tx.forEach((t,k)=>{if(sl.options[k].textContent!==t)sl.options[k].textContent=t});
   if(sl.value!==(CIT.area||""))sl.value=CIT.area||"";
  }
@@ -689,6 +691,51 @@ async function citIngresar(id){
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-ci]");if(b)citIngresar(b.dataset.ci)});
 document.addEventListener("input",e=>{const i=e.target&&e.target.id;if(i==="ciQ"||i==="ciF")citRender()});
 document.addEventListener("change",e=>{const t=e.target;if(!t||t.id!=="ciAs")return;CIT.area=t.value;citRender()});
+
+/* ---- Administrar áreas de citas (solo supervisores con acceso total) ---- */
+function citAdmMsg(t,c){const e=$("#ciAm");if(!e)return;e.innerHTML='<div class="msg '+c+'">'+esc(t)+'</div>';setTimeout(()=>{if($("#ciAm")===e)e.innerHTML=""},5000)}
+function citAdm(){
+ const p=$("#ciAd");if(!p||!AUTH)return;
+ const v=($("#ciNa")||{}).value||"";
+ p.innerHTML='<div class="ct">Áreas de citas</div>'+CIT_AREAS.map((a,i)=>{const f=CIT_FIJAS.includes(a);return '<div class="ac-i" style="align-items:center"><div style="flex:1;min-width:0"><b>'+esc(a)+'</b>'+(f?'<small>🔒 Tiene secciones propias: no se puede renombrar ni eliminar</small>':'')+'</div>'+(f?'':'<button class="btn" data-cae="'+i+'">Editar</button><button class="btn" data-cad="'+i+'">Eliminar</button>')+'</div>'}).join("")+'<div class="row" style="margin-top:8px"><input id="ciNa" placeholder="Nueva área" maxlength="60" autocomplete="off"><button class="btn pr" id="ciAg">Agregar</button></div><div id="ciAm" style="margin-top:6px"></div>';
+ $("#ciNa").value=v;
+}
+const citNom=v=>String(v||"").trim().replace(/\s+/g," ");
+const citDup=(n,sk)=>CIT_AREAS.some((a,i)=>i!==sk&&busNorm(a)===busNorm(n));
+async function citGuardar(l,ok){
+ if(!AUTH){alert("Solo los supervisores con acceso a la plataforma completa pueden administrar las áreas.");return false}
+ if(!window.FBA||!FBA.saveAreasCitas){citAdmMsg("Firebase aún no carga.","err");return false}
+ try{await FBA.saveAreasCitas(l);citAdmMsg(ok,"good");return true}
+ catch(e){console.log(e);citAdmMsg("No se pudo guardar: "+(e.code||e.message),"err");return false}
+}
+async function citAgregar(){
+ const n=citNom(($("#ciNa")||{}).value);
+ if(n.length<2)return citAdmMsg("Escriba el nombre del área.","err");
+ if(citDup(n,-1))return citAdmMsg("Esa área ya existe.","err");
+ if(await citGuardar(CIT_AREAS.concat(n),"✅ Área agregada: "+n)){const x=$("#ciNa");if(x)x.value=""}
+}
+async function citEditar(i){
+ const a=CIT_AREAS[i];if(a==null||CIT_FIJAS.includes(a))return;
+ const r=await uiP("Nuevo nombre para el área «"+a+"»");
+ if(r==null)return;
+ const m=citNom(r);
+ if(m.length<2)return citAdmMsg("Escriba el nombre del área.","err");
+ if(m===a)return;
+ if(citDup(m,i))return citAdmMsg("Esa área ya existe.","err");
+ citGuardar(CIT_AREAS.map((x,k)=>k===i?m:x),"✅ Área renombrada: "+a+" → "+m);
+}
+async function citEliminar(i){
+ const a=CIT_AREAS[i];if(a==null||CIT_FIJAS.includes(a))return;
+ if(!await uiC("¿Eliminar el área «"+a+"»? Las citas ya registradas en esa área se conservan."))return;
+ citGuardar(CIT_AREAS.filter((x,k)=>k!==i),"Área eliminada: "+a);
+}
+document.addEventListener("click",e=>{
+ const t=e.target.closest&&e.target.closest("#ciAdB,#ciAg,[data-cae],[data-cad]");if(!t)return;
+ if(t.id==="ciAdB"){const p=$("#ciAd");p.classList.toggle("hide");if(!p.classList.contains("hide"))citAdm();return}
+ if(t.id==="ciAg")return citAgregar();
+ if(t.dataset.cae!==undefined)return citEditar(+t.dataset.cae);
+ citEliminar(+t.dataset.cad)});
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target&&e.target.id==="ciNa"){e.preventDefault();citAgregar()}});
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("#ciH,#ciT");if(!b)return;$("#ciF").value=b.id==="ciH"?accHoyStr():"";citRender()});
 
 /* ===== Subpestaña: Permisos (estudiantes, docentes y trabajadores con permiso) ===== */
@@ -1151,7 +1198,9 @@ window.FBA={
  watchCitas:(ok,err)=>{if(cun)return;cun=onSnapshot(query(collection(dbA,"citas"),orderBy("ts","desc"),limit(2000)),s=>ok(s.docs.map(d=>Object.assign({id:d.id},d.data({serverTimestamps:"estimate"})))),e=>{cun=null;err(e)})},
  watchPermisos:(ok,err)=>{if(pun)return;pun=onSnapshot(collection(dbA,"permisos"),s=>ok(s.docs.map(d=>Object.assign({id:d.id},d.data()))),e=>{pun=null;err(e)})},
  addPermiso:(id,o)=>{const u=auth.currentUser;if(!u||u.isAnonymous)return Promise.reject(new Error("Solo los supervisores con cuenta pueden crear permisos"));return setDoc(doc(dbA,"permisos",id),Object.assign({},o,{ts:serverTimestamp(),por:(auth.currentUser&&auth.currentUser.email)||"vigilancia"}),{merge:true})},
- delPermiso:id=>deleteDoc(doc(dbA,"permisos",id))
+ delPermiso:id=>deleteDoc(doc(dbA,"permisos",id)),
+ watchAreasCitas:(ok,err)=>onSnapshot(doc(dbA,"configCitas","areas"),s=>ok(s.exists()?s.data().areas:null),err),
+ saveAreasCitas:l=>{const u=auth.currentUser;if(!u||u.isAnonymous)return Promise.reject(new Error("Solo los supervisores con cuenta pueden administrar las áreas"));return setDoc(doc(dbA,"configCitas","areas"),{areas:l,ts:serverTimestamp(),por:u.email||""})}
 };
 const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"),defFrom=()=>{const d=new Date();return iso(new Date(d.getFullYear(),d.getMonth()-1,1))},PG=150;
 let RG={from:defFrom(),to:"",n:PG};

@@ -154,13 +154,6 @@ label{display:block;text-align:left;font-size:12px;color:#555;margin:0 0 4px 4px
       <label for="area">Área a la que fue citado(a) *</label>
       <select id="area" onchange="alCambiarArea()">
         <option value="">Seleccione…</option>
-        <option value="Admisiones">Admisiones</option>
-        <option value="Recursos humanos">Recursos humanos</option>
-        <option value="SST">SST</option>
-        <option value="Vicerrectorías">Vicerrectorías</option>
-        <option value="Psicologías">Psicologías</option>
-        <option value="Convivencia y disciplina">Convivencia y disciplina</option>
-        <option value="PE">PE</option>
       </select>
 
       <div id="zonaSec" class="hidden">
@@ -353,6 +346,24 @@ function iniciarCita(){
   alCambiarArea();
 }
 iniciarCita();
+
+/* ---------- Áreas de cita: las administra el supervisor desde el panel (Firestore: configCitas/areas) ---------- */
+const AREAS_DEF = ["Admisiones","Recursos humanos","SST","Vicerrectorías","Psicologías","Convivencia y disciplina","PE"];
+let AREAS = AREAS_DEF.slice();
+function pintarAreas(){
+  const s = $("area"), actual = s.value;
+  s.innerHTML = "";
+  const o0 = document.createElement("option"); o0.value = ""; o0.textContent = "Seleccione…"; s.appendChild(o0);
+  AREAS.forEach(a => { const o = document.createElement("option"); o.value = a; o.textContent = a; s.appendChild(o); });
+  if(actual && AREAS.includes(actual)) s.value = actual;
+  else if(actual){ s.value = ""; alCambiarArea(); }   // el área elegida ya no existe
+}
+pintarAreas();
+db.collection("configCitas").doc("areas").onSnapshot(snap => {
+  const l = snap.exists ? snap.data().areas : null;
+  AREAS = Array.isArray(l) && l.length ? l : AREAS_DEF.slice();
+  pintarAreas();
+}, e => console.error("No se pudieron leer las áreas:", e));
 
 function llenarCampos(p){ CAMPOS.forEach(c => { $(c).value = p[c] || ""; }); }
 function limpiarCampos(){ CAMPOS.forEach(c => { $(c).value = ""; }); }
