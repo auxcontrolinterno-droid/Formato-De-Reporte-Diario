@@ -645,7 +645,13 @@ function citRender(){
  const b0=CIT.list.filter(c=>(!f||c.fechaCita===f)&&(!q||busNorm(c.nombre).includes(q)||(qn.length>=3&&busNum(c.doc).includes(qn))));
  const b=b0;
  const cn={};b.forEach(c=>{cn[c.area]=(cn[c.area]||0)+1});
- const ca=$("#ciA");if(ca)ca.innerHTML='<button class="btn'+(CIT.area?"":" pr")+'" data-ca="">Todas ('+b.length+')</button>'+CIT_AREAS.map(x=>'<button class="btn'+(CIT.area===x?" pr":"")+'" data-ca="'+esc(x)+'">'+esc(x)+' ('+(cn[x]||0)+')</button>').join("");
+ const ca=$("#ciA");if(ca){
+  if(!ca.querySelector("select"))ca.innerHTML='<div style="width:100%"><label for="ciAs">Filtrar por área</label><select id="ciAs"></select></div>';
+  const sl=$("#ciAs"),tx=['Todas las áreas ('+b.length+')'].concat(CIT_AREAS.map(x=>x+' ('+(cn[x]||0)+')'));
+  if(sl.options.length!==tx.length){sl.innerHTML=["",...CIT_AREAS].map(x=>'<option value="'+esc(x)+'"></option>').join("")}
+  tx.forEach((t,k)=>{if(sl.options[k].textContent!==t)sl.options[k].textContent=t});
+  if(sl.value!==(CIT.area||""))sl.value=CIT.area||"";
+ }
  let a=b.filter(c=>!CIT.area||c.area===CIT.area);
  const k=c=>(c.fechaCita||"")+" "+(c.horaCita||"");
  a.sort((x,y)=>f?(k(x)<k(y)?-1:1):(k(x)<k(y)?1:-1));
@@ -682,7 +688,7 @@ async function citIngresar(id){
 }
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-ci]");if(b)citIngresar(b.dataset.ci)});
 document.addEventListener("input",e=>{const i=e.target&&e.target.id;if(i==="ciQ"||i==="ciF")citRender()});
-document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-ca]");if(!b)return;CIT.area=(b.dataset.ca&&CIT.area===b.dataset.ca)?"":b.dataset.ca;citRender()});
+document.addEventListener("change",e=>{const t=e.target;if(!t||t.id!=="ciAs")return;CIT.area=t.value;citRender()});
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("#ciH,#ciT");if(!b)return;$("#ciF").value=b.id==="ciH"?accHoyStr():"";citRender()});
 
 /* ===== Subpestaña: Permisos (estudiantes, docentes y trabajadores con permiso) ===== */
