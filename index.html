@@ -446,9 +446,12 @@ async function accLoad(force){
 }
 function accMov(ing,sal){
  let m=[];
- ing.forEach(f=>m.push({h:f[0],n:f[3],r:f[4],t:1}));
- sal.forEach(f=>m.push({h:f[0],n:f[3],r:f[4],t:0}));
- m.sort((x,y)=>accDate(y.h)-accDate(x.h));m=m.slice(0,10);
+ ing.forEach(f=>m.push({h:f[0],n:f[3],r:f[4],t:1,d:String(f[2]==null?"":f[2]).trim()}));
+ sal.forEach(f=>m.push({h:f[0],n:f[3],r:f[4],t:0,d:String(f[2]==null?"":f[2]).trim()}));
+ m.sort((x,y)=>accDate(y.h)-accDate(x.h));
+ /* quita duplicados: mismo documento y mismo tipo (ingreso/salida) con menos de 60 s de diferencia */
+ m=m.filter((x,i,a)=>{const tx=+accDate(x.h)||0;return !a.slice(0,i).some(y=>y.t===x.t&&y.d===x.d&&(x.d||y.n===x.n)&&Math.abs((+accDate(y.h)||0)-tx)<60000)});
+ m=m.slice(0,10);
  $("#acTb").innerHTML=m.length?m.map(x=>`<tr><td>${accHora(x.h)}</td><td>${esc(x.n||"-")}</td><td>${esc(x.r||"-")}</td><td><span class="pill${x.t?" ok":""}">${x.t?"Ingreso":"Salida"}</span></td></tr>`).join(""):'<tr><td colspan="4" class="mu">Sin movimientos hoy</td></tr>';
 }
 function accRender(){
